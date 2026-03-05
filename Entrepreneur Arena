@@ -1,0 +1,680 @@
+{
+  "name": "Entrepreneur Arena",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "0859eefb-e182-4c9f-91cd-8400db83fcf8",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "66dd2d76-000e-4619-932a-bd98fbfb67b8",
+      "name": "Set Arena Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -32,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "44q3twpOWG797oot",
+        "options": {}
+      },
+      "id": "6c393d5d-93ab-4fc9-a887-7a2d76e545d9",
+      "name": "Execute Team A Runner",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        192,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "workflowId": "pCH3ejBs3Yh2AvSq",
+        "options": {}
+      },
+      "id": "d2f00f1a-f1d8-45e5-b265-5135d1b283b1",
+      "name": "Execute Team B Runner",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1,
+      "position": [
+        192,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an impartial arena judge evaluating two competing startup pitches. Score each using the rubric below and declare a winner.\n\nRubric (must sum to 100):\n- market (0-25): Is the market large, urgent, and willing to pay?\n- originality (0-20): Is this idea novel with no dominant incumbent?\n- feasibility (0-20): Can this realistically be built in 6 months on $25k?\n- differentiation (0-20): Does it have a clear unfair advantage or moat?\n- distribution (0-15): Is there a clear, realistic first channel and distribution path?\n\nTeam A Packet:\n{{ JSON.stringify($input.all()[0].json) }}\n\nTeam B Packet:\n{{ JSON.stringify($input.all()[1].json) }}\n\nReturn ONLY a JSON object with fields:\n- teamAScore (integer 0-100)\n- teamBScore (integer 0-100)\n- teamARubric: { market, originality, feasibility, differentiation, distribution }\n- teamBRubric: { market, originality, feasibility, differentiation, distribution }\n- winner (\"A\" or \"B\")\n- winningConcept (the full concept object of the winner — copy from the winning team packet's concept field)\n- justification (string — explain the scoring delta between the two teams, referencing specific rubric dimensions)\n\nNo markdown. No explanation. Just the JSON object."
+      },
+      "id": "583e2eae-af46-471a-af5e-7f5d819f857d",
+      "name": "Arena Judge (LLM)",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        640,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "a73e126d-26b6-4c80-b7a4-1c67fe58e485",
+      "name": "ArenaJudge — OpenRouter Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        720,
+        544
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a business writer. Take this winning startup concept and produce a polished one-page executive summary.\n\nReturn ONLY a JSON object with fields:\n- headline (string)\n- executiveSummary (string)\n- keyStrengths (array of strings)\n- nextSteps (array of strings)\n\nNo markdown. No explanation. Just the JSON object.\n\nWinner data:\n{{ $json.output || $json.text }}"
+      },
+      "id": "7295f8ef-0144-4f76-977d-e6db1584c2a6",
+      "name": "Winner Packager",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        992,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "model": "arcee-ai/trinity-large-preview:free",
+        "options": {}
+      },
+      "id": "64eea5be-afe0-4777-94d2-4fae8ce8254f",
+      "name": "WinnerPackager — OpenRouter Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        1072,
+        544
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "console.log(`[${new Date().toISOString()}] Entrepreneur Arena completed successfully.`);\nconsole.log('Winner:', items[0]?.json?.winner);\nconsole.log('Concept:', items[0]?.json?.conceptName);\nconsole.log('Scores — A:', items[0]?.json?.teamAScore, '| B:', items[0]?.json?.teamBScore);\nreturn items;"
+      },
+      "id": "cd9d77e5-169f-4c68-8935-942c46ed3fc7",
+      "name": "Log Success",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1792,
+        320
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "9bfa15af-29f4-4d6f-a0cb-be9cca712acb",
+      "name": "Workflow Error Trigger",
+      "type": "n8n-nodes-base.errorTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const errData = items[0]?.json || {};\nconst err = errData.error || {};\nconst node = errData.node || 'unknown';\nconst ts = new Date().toISOString();\nconsole.error(`[${node} | ${ts}] Workflow Error:\\n  Message: ${err.message || 'No message'}\\n  Code: ${err.code || ''}\\n  Stack: ${err.stack || ''}\\n  Full: ${JSON.stringify(err, null, 2)}`);\nreturn items;"
+      },
+      "id": "6a90056d-dcb1-43d4-bf02-0351feabc94a",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -32,
+        656
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "66e8c6e3-f716-4590-b516-9db62f853f92",
+      "name": "Merge Team Packets1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [
+        416,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Parse Winner Packager output ─────────────────────────────────────────────\nconst rawPackager = items[0]?.json?.output || items[0]?.json?.text || '';\nlet packager = {};\ntry {\n  const m = rawPackager.match(/\\{[\\s\\S]*\\}/);\n  if (m) packager = JSON.parse(m[0]);\n} catch(e) {}\n\n// ── Parse Arena Judge output ──────────────────────────────────────────────────\nconst rawJudge = $('Arena Judge (LLM)').first().json?.output || $('Arena Judge (LLM)').first().json?.text || '';\nlet judge = {};\ntry {\n  const m = rawJudge.match(/\\{[\\s\\S]*\\}/);\n  if (m) judge = JSON.parse(m[0]);\n} catch(e) {}\n\n// ── Pull team packets directly from the Merge node's two output items ────────\nconst mergeItems = $('Merge Team Packets1').all();\nconst teamA = mergeItems[0]?.json || {};\nconst teamB = mergeItems[1]?.json || {};\n\nconst keyStrengths = Array.isArray(packager.keyStrengths)\n  ? packager.keyStrengths.join(' | ')\n  : '';\nconst nextSteps = Array.isArray(packager.nextSteps)\n  ? packager.nextSteps.join(' | ')\n  : '';\n\nconst winnerTeam = judge.winner || '';\nconst winningPacket = winnerTeam === 'A' ? teamA : teamB;\n\nreturn [{\n  json: {\n    runId: $execution.id,\n    runAt: new Date().toISOString(),\n    winner: winnerTeam,\n    headline: packager.headline || '',\n    executiveSummary: packager.executiveSummary || '',\n    keyStrengths,\n    nextSteps,\n    justification: judge.justification || '',\n    teamAScore: judge.teamAScore || 0,\n    teamBScore: judge.teamBScore || 0,\n    conceptName: winningPacket.name || '',\n    oneLiner: winningPacket.oneLiner || '',\n    targetCustomer: winningPacket.targetCustomer || '',\n    problem: winningPacket.problem || '',\n    solution: winningPacket.solution || '',\n    revenueModel: winningPacket.revenueModel || '',\n    goToMarket: winningPacket.goToMarket || '',\n    unfairAdvantage: winningPacket.unfairAdvantage || '',\n    keyRisks: winningPacket.keyRisks || '',\n    overallStrength: winningPacket.overallStrength || 0,\n    market: winnerTeam === 'A' ? judge.teamARubric?.market || 0 : judge.teamBRubric?.market || 0,\n    originality: winnerTeam === 'A' ? judge.teamARubric?.originality || 0 : judge.teamBRubric?.originality || 0,\n    feasibility: winnerTeam === 'A' ? judge.teamARubric?.feasibility || 0 : judge.teamBRubric?.feasibility || 0,\n    differentiation: winnerTeam === 'A' ? judge.teamARubric?.differentiation || 0 : judge.teamBRubric?.differentiation || 0,\n    distribution: winnerTeam === 'A' ? judge.teamARubric?.distribution || 0 : judge.teamBRubric?.distribution || 0,\n    summary: winningPacket.summary || ''\n  }\n}];"
+      },
+      "id": "9c7a1f1a-5da9-4c3d-9eeb-3faaad71d4e3",
+      "name": "Prep Winners Row1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1344,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA",
+          "mode": "list",
+          "cachedResultName": "IdeaRepo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 704193225,
+          "mode": "list",
+          "cachedResultName": "Winners",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit#gid=704193225"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "runAt",
+              "displayName": "runAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "oneLiner",
+              "displayName": "oneLiner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "targetCustomer",
+              "displayName": "targetCustomer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "problem",
+              "displayName": "problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "solution",
+              "displayName": "solution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "revenueModel",
+              "displayName": "revenueModel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "goToMarket",
+              "displayName": "goToMarket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "unfairAdvantage",
+              "displayName": "unfairAdvantage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "keyRisks",
+              "displayName": "keyRisks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "mutationApplied",
+              "displayName": "mutationApplied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "overallStrength",
+              "displayName": "overallStrength",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "originality",
+              "displayName": "originality",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "market",
+              "displayName": "market",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "differentiation",
+              "displayName": "differentiation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "feasibility",
+              "displayName": "feasibility",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rubricScores",
+              "displayName": "rubricScores",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vcQA",
+              "displayName": "vcQA",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "vcResponses",
+              "displayName": "vcResponses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "winner",
+              "displayName": "winner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "headline",
+              "displayName": "headline",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "executiveSummary",
+              "displayName": "executiveSummary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "keyStrengths",
+              "displayName": "keyStrengths",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nextSteps",
+              "displayName": "nextSteps",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "justification",
+              "displayName": "justification",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teamAScore",
+              "displayName": "teamAScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teamBScore",
+              "displayName": "teamBScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "conceptName",
+              "displayName": "conceptName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "distribution",
+              "displayName": "distribution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a320821c-9754-4dbe-8269-9e2827c94eec",
+      "name": "Write to Winners1",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        1568,
+        320
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Manual Trigger": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Set Arena Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Arena Config": {
+      "main": [
+        [
+          {
+            "node": "Execute Team A Runner",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Execute Team B Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Team A Runner": {
+      "main": [
+        [
+          {
+            "node": "Merge Team Packets1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Team B Runner": {
+      "main": [
+        [
+          {
+            "node": "Merge Team Packets1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "ArenaJudge — OpenRouter Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Arena Judge (LLM)",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Arena Judge (LLM)": {
+      "main": [
+        [
+          {
+            "node": "Winner Packager",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WinnerPackager — OpenRouter Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Winner Packager",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Winner Packager": {
+      "main": [
+        [
+          {
+            "node": "Prep Winners Row1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Workflow Error Trigger": {
+      "main": [
+        [
+          {
+            "node": "Log Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Team Packets1": {
+      "main": [
+        [
+          {
+            "node": "Arena Judge (LLM)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Winners Row1": {
+      "main": [
+        [
+          {
+            "node": "Write to Winners1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Winners1": {
+      "main": [
+        [
+          {
+            "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "deb7c032-1862-474e-b776-71d83f41d59f",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d1ad3f4f440ce23f8275e30c2127c8c2fe97bf83a4534f480ec0c7a54495b806"
+  },
+  "id": "x96e3dUW0jdFNbyD",
+  "tags": []
+}
