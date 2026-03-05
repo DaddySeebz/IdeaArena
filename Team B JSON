@@ -1,0 +1,1394 @@
+{
+  "name": "Team B",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "c99c5fdd-0a54-43ed-922d-b2c3c1843f11",
+      "name": "Team Runner Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1,
+      "position": [
+        2960,
+        624
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA",
+          "mode": "list",
+          "cachedResultName": "IdeaRepo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Idea Bank",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "normalizedKey"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "854a1241-b02a-4c35-96ac-9b8e0528e8fd",
+      "name": "Read Idea Bank Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        3168,
+        608
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Shape one row per deduplicated idea for Google Sheets append ──────────────\nconst ideas = $('Dedupe & Normalize Ideas1').first().json.ideas || [];\nconst runId = $execution.id;\nconst addedAt = new Date().toISOString();\n\nif (ideas.length === 0) {\n  // Return a no-op item so the workflow doesn't stall\n  return [{ json: { skipped: true, reason: 'No new ideas to write' } }];\n}\n\nreturn ideas.map(idea => ({\n  json: {\n    normalizedKey: idea.normalizedKey,\n    oneLiner: idea.oneLiner,\n    addedAt,\n    runId,\n  }\n}));"
+      },
+      "id": "5e86dbf0-8e6f-4399-9f94-ed5df1cb49cb",
+      "name": "Prep Idea Bank Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4992,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA",
+          "mode": "list",
+          "cachedResultName": "IdeaRepo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Idea Bank",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "normalizedKey",
+              "displayName": "normalizedKey",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "oneLiner",
+              "displayName": "oneLiner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "addedAt",
+              "displayName": "addedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "a14876c6-bf34-49a3-8878-1f2243727e74",
+      "name": "Write to Idea Bank",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        5216,
+        608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Parse the Finalize Packet output ─────────────────────────────────────────\nconst raw = items[0]?.json?.output || items[0]?.json?.text || '';\n\nlet packet = {};\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  if (match) packet = JSON.parse(match[0]);\n} catch(e) {}\n\nconst concept = packet.concept || {};\nconst rubric = packet.rubricScores || {};\nconst mutationApplied = $('Draw Mutation1').first().json.mutation || '';\n\nreturn [{\n  json: {\n    runId: $execution.id,\n    runAt: new Date().toISOString(),\n    name: concept.name || '',\n    oneLiner: concept.oneLiner || '',\n    targetCustomer: concept.targetCustomer || '',\n    problem: concept.problem || '',\n    solution: concept.solution || '',\n    revenueModel: concept.revenueModel || '',\n    goToMarket: concept.goToMarket || '',\n    unfairAdvantage: concept.unfairAdvantage || '',\n    keyRisks: concept.keyRisks || '',\n    mutationApplied,\n    overallStrength: packet.overallStrength || 0,\n    rubricScores: {\n      market: rubric.market || 0,\n      originality: rubric.originality || 0,\n      feasibility: rubric.feasibility || 0,\n      differentiation: rubric.differentiation || 0,\n      distribution: rubric.distribution || 0\n    },\n    summary: packet.summary || '',\n    vcQA: packet.vcQA || [],\n    vcResponses: packet.vcResponses || []\n  }\n}];"
+      },
+      "id": "6aa212ed-b6c1-4733-b505-6c13cba51e16",
+      "name": "Prep Final Concept Row",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        9392,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA",
+          "mode": "list",
+          "cachedResultName": "IdeaRepo",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1149670085,
+          "mode": "list",
+          "cachedResultName": "Final Concepts",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1Fq0fHdH8qL57jwSK_H7oKcaKg_XsUF2x0lvceiv60GA/edit#gid=1149670085"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "runId",
+              "displayName": "runId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "runAt",
+              "displayName": "runAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "name",
+              "displayName": "name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "oneLiner",
+              "displayName": "oneLiner",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "targetCustomer",
+              "displayName": "targetCustomer",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "problem",
+              "displayName": "problem",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "solution",
+              "displayName": "solution",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "revenueModel",
+              "displayName": "revenueModel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "goToMarket",
+              "displayName": "goToMarket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "unfairAdvantage",
+              "displayName": "unfairAdvantage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "keyRisks",
+              "displayName": "keyRisks",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "mutationApplied",
+              "displayName": "mutationApplied",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "overallStrength",
+              "displayName": "overallStrength",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "originality",
+              "displayName": "originality",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "market",
+              "displayName": "market",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "differentiation",
+              "displayName": "differentiation",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "goToMarketScore",
+              "displayName": "goToMarketScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "feasibility",
+              "displayName": "feasibility",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "summary",
+              "displayName": "summary",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "de9ace3c-fadd-4e7c-a526-7aa9e52550d7",
+      "name": "Write to Final Concepts",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        9616,
+        608
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Rows come from the Google Sheets Read node upstream ──────────────────────\nconst sheetRows = items.map(i => i.json);\n\n// ── Build summaries list for injection into generation prompts ────────────────\nconst existingSummaries = sheetRows\n  .map(r => r.oneLiner || '')\n  .filter(Boolean);\n\n// ── Build normalized key set for dedup later ──────────────────────────────────\nconst existingKeys = sheetRows\n  .map(r => r.normalizedKey || '')\n  .filter(Boolean);\n\n// ── Pull triggerContext from the workflow trigger (passed by Arena parent) ─────\nconst triggerData = $('Team Runner Trigger').first().json || {};\nconst triggerContext = {\n  constraints: triggerData.constraints || {},\n  rubric: triggerData.rubric || {}\n};\n\nreturn [{ json: { existingSummaries, existingKeys, triggerContext } }];"
+      },
+      "id": "bcb82123-cc2b-4fb6-b680-4769cc1d5a93",
+      "name": "Load Idea Bank1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3392,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate 3 unusual and diverse business ideas. Prioritize novelty and surprise — think contrarian, niche, or counterintuitive. Challenge assumptions about who the customer is or what the problem actually is. Avoid ideas that require a two-sided marketplace as a cold-start mechanism.\n\nIMPORTANT: The following ideas have already been generated — do NOT recreate or closely echo any of them:\n{{ JSON.stringify($json.existingSummaries) }}\n\nFor each idea return a JSON object with fields: oneLiner, targetCustomer, problem, revenueModel.\nContext: {{ JSON.stringify($json.triggerContext) }}\nReturn a JSON array of 3 objects.",
+        "options": {}
+      },
+      "id": "5b1e11a8-e09a-4a1b-9136-b58bb1747ac0",
+      "name": "Generate Ideas — Model A1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        3680,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "id": "90089f1f-7941-4f30-8c8c-f57e5c146242",
+      "name": "ModelA — OpenRouter1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        3616,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $workflow.id }}-modelA"
+      },
+      "id": "39ca7288-08aa-444a-b086-42bdbdfb3fe9",
+      "name": "Memory — Model A1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        3744,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate 3 alternative business ideas using trend collision and edge-case thinking. Use these creative lenses: (1) pair two unrelated macro trends, (2) underserved demographic pivots, (3) workflow unbundling — take one step of an existing workflow and make it a standalone business. Avoid ideas that require a two-sided marketplace as a cold-start mechanism.\n\nIMPORTANT: The following ideas have already been generated — do NOT recreate or closely echo any of them:\n{{ JSON.stringify($('Load Idea Bank1').item.json.existingSummaries) }}\n\nAlso avoid duplicating any of these ideas just generated by Model A:\n{{ $('Generate Ideas — Model A1').item.json.output }}\n\nFor each idea return a JSON object with fields: oneLiner, targetCustomer, problem, revenueModel.\nContext: {{ JSON.stringify($('Load Idea Bank1').item.json.triggerContext) }}\nReturn a JSON array of 3 objects.",
+        "options": {}
+      },
+      "id": "31f197ad-0ef8-4035-890d-7079c3b4cca3",
+      "name": "Generate Ideas — Model B1",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        4144,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "67bab44b-70d3-4972-89ac-d09bf131a274",
+      "name": "ModelB — OpenRouter1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        4080,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $workflow.id }}-modelB"
+      },
+      "id": "207967ff-2e8e-45cc-aadf-8a8adcc720e3",
+      "name": "Memory — Model B1",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        4208,
+        832
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{\n  json: {\n    modelAOutput: $('Generate Ideas — Model A1').first().json.output || '',\n    modelBOutput: $input.first().json.output || ''\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4544,
+        608
+      ],
+      "id": "19c3976e-5de3-4c9c-899c-5551d1ef71e6",
+      "name": "Compile Outputs1"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ── Inputs ────────────────────────────────────────────────────────────────────\nconst rawA = items[0]?.json?.modelAOutput || '';\nconst rawB = items[0]?.json?.modelBOutput || '';\n\n// ── Existing keys from Google Sheet (passed through Load Idea Bank) ───────────\nconst existingKeys = new Set($('Load Idea Bank1').first().json.existingKeys || []);\n\n// ── Parse JSON arrays from raw LLM output ────────────────────────────────────\nfunction parseIdeas(raw) {\n  if (!raw) return [];\n  try {\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (!match) return [];\n    return JSON.parse(match[0]);\n  } catch (e) {\n    return [];\n  }\n}\n\n// ── Normalize for dedup comparison ───────────────────────────────────────────\nfunction normalizeKey(str) {\n  if (!str) return '';\n  return str\n    .toLowerCase()\n    .replace(/[^a-z0-9 ]/g, '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// ── Combine and validate ──────────────────────────────────────────────────────\nconst combined = [...parseIdeas(rawA), ...parseIdeas(rawB)];\n\nconst validIdeas = combined.filter(i =>\n  i && typeof i === 'object' && typeof i.oneLiner === 'string' && i.oneLiner.trim()\n);\n\n// ── Within-run dedup + cross-run dedup against Sheet keys ────────────────────\nconst seen = new Set();\nconst deduped = [];\n\nfor (const idea of validIdeas) {\n  const key = normalizeKey(idea.oneLiner);\n  if (!key) continue;\n  if (seen.has(key) || existingKeys.has(key)) continue;\n  seen.add(key);\n  deduped.push({ ...idea, normalizedKey: key });\n}\n\n// ── Output ────────────────────────────────────────────────────────────────────\nreturn [{\n  json: {\n    ideas: deduped,\n    parsedFromA: parseIdeas(rawA).length,\n    parsedFromB: parseIdeas(rawB).length,\n    dedupedCount: deduped.length,\n  }\n}];"
+      },
+      "id": "1192cc56-e4d7-4dec-a0ad-729a3a0bdd0c",
+      "name": "Dedupe & Normalize Ideas1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4768,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a startup market researcher. For each of the following business ideas, research and score them across 6 dimensions. Return ONLY a JSON array where each object contains all original idea fields PLUS a `research` object with these fields:\n\n- originality: { score: 0-10, existingBrands: [array of known competitors], notes: string }\n- marketSize: { score: 0-10, tamEstimate: string, problemPervasiveness: string, notes: string }\n- competitionDensity: { score: 0-10, numberOfKnownPlayers: string, marketLeaders: [array], successLevel: string, notes: string }\n- timing: { score: 0-10, trendDirection: 'rising|peak|declining', whyNow: string, recentUnlocks: string, notes: string }\n- pricingPower: { score: 0-10, comparableProductsPricing: string, willingnessToPay: string, notes: string }\n- distributionClarity: { score: 0-10, obviousFirstChannel: string, channelExists: boolean, notes: string }\n- regulatoryExposure: { riskLevel: 'low|medium|high', domains: [array of any regulated domains touched], feasibilityImpact: string }\n- talentAvailability: { score: 0-10, requiredSkills: [array], bottlenecks: string }\n- exitLandscape: { score: 0-10, likelyAcquirers: [array], recentAcquisitionsInSpace: string }\n\nAlso add a `researchSummary` string: 2 sentences on why this idea is or isn't well-positioned.\n\nIdeas to research:\n{{ JSON.stringify($('Dedupe & Normalize Ideas1').first().json.ideas) }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        5504,
+        608
+      ],
+      "id": "e31ba3e9-405e-454c-a6f5-1bea0862b3a5",
+      "name": "Research Agent1"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-vl-30b-a3b-thinking",
+        "options": {}
+      },
+      "id": "135df0fd-7f97-4a62-81f2-9dbd1548737f",
+      "name": "Research — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        5440,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $workflow.id }}-research",
+        "contextWindowLength": 2
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        5568,
+        832
+      ],
+      "id": "1d22524e-bcbe-4a23-b28b-99aa61304085",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || '';\n\nconst jsonStart = raw.indexOf('[');\nconst jsonEnd = raw.lastIndexOf(']');\n\nif (jsonStart === -1 || jsonEnd === -1) {\n  return [{ json: { researchedIdeas: [], parseError: 'No JSON array found in output' } }];\n}\n\nconst cleaned = raw\n  .slice(jsonStart, jsonEnd + 1)\n  .replace(/,(\\s*[}\\]])/g, '$1');\n\ntry {\n  const researchedIdeas = JSON.parse(cleaned);\n  return [{ json: { researchedIdeas } }];\n} catch(e) {\n  return [{ json: { researchedIdeas: [], parseError: e.message, rawSlice: cleaned.slice(0, 500) } }];\n}"
+      },
+      "id": "f3610c39-9e07-47c9-84b7-ec29239ece77",
+      "name": "Parse Research Results1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5904,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a competitive startup evaluator. Your goal is to identify the single idea most likely to WIN against a competing team — prioritize ideas that are novel, have real market pull, and can be built in 6 months with a $25,000 budget.\n\nScore each idea using these EXACT weights (must sum to 100):\n- Market urgency & size: 25 points\n- Originality / no dominant incumbent: 20 points\n- Feasibility within $25k / 6 months: 20 points\n- Differentiation / moat: 20 points\n- Distribution clarity (obvious first channel exists): 15 points\n\nFor each idea you have been provided research data covering: originality, market size, competition density, timing, pricing power, distribution clarity, regulatory exposure, talent availability, and exit landscape. Use this evidence — do NOT invent your own beliefs.\n\nReturn a JSON object with:\n- winner: the full idea object of the top pick\n- whyBest: string explaining why this idea wins based on the research\n- rankedList: array of all ideas ranked with fields { oneLiner, totalScore, scoreBreakdown: { marketUrgency, originality, feasibility, differentiation, distribution } }\n\nResearched Ideas:\n{{ JSON.stringify($json.researchedIdeas) }}"
+      },
+      "id": "50144a1b-fdd7-4e93-985e-0d4f7db10faa",
+      "name": "Rank & Pick Top Idea1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        6128,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "22ef6f55-ca27-41df-8f4a-3cb0965c82b8",
+      "name": "PickTop — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        6208,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a startup strategist. Expand this idea into a full structured business concept.\n\nReturn ONLY a JSON object with these fields:\n- name\n- oneLiner\n- targetCustomer\n- problem\n- solution\n- revenueModel\n- goToMarket\n- unfairAdvantage\n- keyRisks\n\nNo markdown. No explanation. Just the JSON object.\n\nIdea:\n{{ $json.output || $json.text }}"
+      },
+      "id": "effba151-4908-44b4-9a4a-e5ce5724d2ba",
+      "name": "Build Concept Packet1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        6480,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "c815a182-8b0d-4ec8-b781-66865fab092c",
+      "name": "DraftConcept — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        6560,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a brutal startup critic. Analyze this business concept and identify its fatal flaws.\n\nReturn ONLY a JSON object with these fields:\n- fatalAssumptions (array of strings)\n- weaknesses (array of strings)\n- suggestedFixes (array of strings)\n- weakestRubricAreas (array of strings — choose from: originality, market, differentiation, goToMarket, revenueModel, feasibility)\n\nNo markdown. No explanation. Just the JSON object.\n\nConcept:\n{{ $json.output || $json.text }}"
+      },
+      "id": "2a56eaa8-eab7-4b52-b96b-43757be60c70",
+      "name": "Self Critic1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        6832,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "f6cec94f-7418-4546-9e8b-9826b705e364",
+      "name": "SelfCritic — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        6912,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a startup strategist. Using the critique below, repair and strengthen this business concept. Address every fatal assumption and weakness listed. If a fatal assumption cannot be resolved with a minor fix, pivot the core idea rather than papering over it — substantive repairs only.\n\nReturn ONLY the full updated concept as a JSON object with these fields:\n- name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks\n\nNo markdown. No explanation. Just the JSON object.\n\nCritique:\n{{ $json.output || $json.text }}\n\nOriginal Concept (from prior step — incorporate all suggested fixes):\n{{ $('Build Concept Packet1').item.json.output || $('Build Concept Packet1').item.json.text }}"
+      },
+      "id": "66d0300f-a970-4228-9702-861ff9096bf1",
+      "name": "Repair Concept1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        7184,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "f5fd62e9-3169-4306-9e71-c364bd744c9a",
+      "name": "RepairConcept — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        7264,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const opts = ['ICP', 'pricing', 'channel', 'scope', 'keyFeature'];\nconst mutation = opts[Math.floor(Math.random() * opts.length)];\nconst conceptText = $input.first().json.text;\nreturn [{ json: { mutation, conceptText } }];"
+      },
+      "id": "58126fa8-ef63-4707-b12b-8ae968f448ad",
+      "name": "Draw Mutation1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7536,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a creative startup strategist. Apply a '{{ $json.mutation }}' mutation to this business concept — meaningfully change that dimension to explore a stronger variant.\n\nBefore applying, assess whether this mutation improves the concept's competitive position or feasibility within a $25k budget and 6-month timeline. If this mutation would weaken the concept, apply it conservatively and explain the tradeoff in a `mutationNote` field.\n\nReturn ONLY the full updated concept as a JSON object with fields: name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks, mutationNote.\n\nCurrent Concept:\n{{ $json.conceptText }}"
+      },
+      "id": "8e86bcc2-5189-4532-80ac-02b5f9300a5f",
+      "name": "Apply Mutation1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        7760,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "fc99dffb-5324-4ccf-978a-bb29bf228e89",
+      "name": "ApplyMutation — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        7840,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a skeptical VC partner evaluating a bootstrapped startup with a $25,000 budget and 6-month runway. Ruthlessly evaluate this concept by answering these 10 deal-killer questions with in-depth reasoning that is calibrated to this budget and timeline — not Series A scale:\n\n1. Why will this fail?\n2. Who already does this better?\n3. Why would customers not pay?\n4. What is the CAC and is it sustainable at $25k total spend?\n5. What is the moat?\n6. Why this team (and can it be executed solo or with contractors)?\n7. What kills this in year 2?\n8. What is the regulatory risk?\n9. What does the unit economics look like at MVP scale (first 100 customers)?\n10. What is the exit path and who are realistic acquirers?\n\nReturn ONLY a JSON array of 10 objects each with fields: question, answer.\n\nConcept:\n{{ $json.output || $json.text }}"
+      },
+      "id": "e1e4630a-7ffd-40e4-9967-69845f698461",
+      "name": "VC Assassin1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        8112,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "7bb1d111-55e5-4a6e-93cb-969bf905c692",
+      "name": "VCAssassin — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        8192,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const vcQA = $input.first().json.text;\nconst mutatedConcept = $('Apply Mutation1').first().json.text;\nreturn [{ json: { vcQA, mutatedConcept } }];"
+      },
+      "id": "5b02120d-8de6-4867-9339-69ad13330358",
+      "name": "Merge VC + Concept1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        8464,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a startup strategist. A VC has just performed a brutal assassination of this business concept. Your job is to respond to every one of their 10 criticisms and produce an improved, hardened version of the concept that directly addresses each deal-killer.\n\nFor each VC question:\n- If the concern is resolvable, explain how the concept addresses it and update the concept accordingly\n- If the concern reveals a structural flaw, pivot that element of the concept rather than papering over it\n\nReturn ONLY a JSON object with fields:\n- concept: { name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks }\n- vcResponses: array of { question, originalConcern, response, conceptChange } for each of the 10 VC questions\n\nNo markdown. No explanation. Just the JSON object.\n\nOriginal Concept:\n{{ $json.mutatedConcept }}\n\nVC Assassination Q&A:\n{{ $json.vcQA }}"
+      },
+      "id": "a5a40fd7-2a85-4bae-a5cf-25261ce0631b",
+      "name": "Respond to VC Assassination1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        8688,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b-thinking-2507",
+        "options": {}
+      },
+      "id": "89787b97-6a5b-4386-88e7-2774ed049c70",
+      "name": "VCRespond — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        8768,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a meticulous analyst. Compile the final arena submission packet from the hardened concept and its full VC response history.\n\nScore rubric — use EXACTLY these weights, they must sum to 100:\n- market (0-25): Is the market large, urgent, and willing to pay?\n- originality (0-20): Is this idea novel with no dominant incumbent?\n- feasibility (0-20): Can this realistically be built in 6 months on $25k?\n- differentiation (0-20): Does it have a clear unfair advantage or moat?\n- distribution (0-15): Is there a clear, realistic first channel and distribution path?\n\nReturn ONLY a JSON object with fields:\n- concept (the full hardened concept object from the VC response)\n- vcQA (array of {question, answer} from the original VC assassination)\n- vcResponses (array of {question, originalConcern, response, conceptChange})\n- overallStrength (integer 0-100, sum of rubric scores)\n- rubricScores: { market, originality, feasibility, differentiation, distribution }\n- summary (2-sentence pitch suitable for arena submission)\n\nNo markdown. No explanation. Just the JSON object.\n\nHardened Concept + VC Responses:\n{{ $json.output || $json.text }}"
+      },
+      "id": "eccd0fe9-e2f5-4760-a029-d29f05c91369",
+      "name": "Finalize Packet1",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.6,
+      "position": [
+        9040,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "model": "openrouter/free",
+        "options": {}
+      },
+      "id": "cc55bd56-681d-402b-98d2-e33e39b65d73",
+      "name": "Finalize — OpenRouter Model1",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        9120,
+        832
+      ],
+      "credentials": {
+        "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "additionalParameters": {
+          "country": "US",
+          "search_lang": "en",
+          "result_filter": [
+            "summarizer"
+          ],
+          "goggles": []
+        }
+      },
+      "id": "a11625d7-17f5-4435-bd8e-1ca2c6873e72",
+      "name": "Web Search - Model B1",
+      "type": "@brave/n8n-nodes-brave-search.braveSearchTool",
+      "typeVersion": 1,
+      "position": [
+        4336,
+        832
+      ],
+      "credentials": {
+        "braveSearchApi": {
+          "id": "GovdHNl4WyQt3JAE",
+          "name": "Brave Search account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "query": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Query', ``, 'string') }}",
+        "additionalParameters": {
+          "country": "US",
+          "search_lang": "en",
+          "result_filter": [
+            "summarizer"
+          ],
+          "goggles": []
+        }
+      },
+      "id": "904ce947-4ca5-46b1-b2bb-664aed09d7eb",
+      "name": "Web Search — Model A1",
+      "type": "@brave/n8n-nodes-brave-search.braveSearchTool",
+      "typeVersion": 1,
+      "position": [
+        3872,
+        832
+      ],
+      "credentials": {
+        "braveSearchApi": {
+          "id": "GovdHNl4WyQt3JAE",
+          "name": "Brave Search account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Team Runner Trigger": [
+      {
+        "json": {},
+        "pairedItem": {
+          "item": 0
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Team Runner Trigger": {
+      "main": [
+        [
+          {
+            "node": "Read Idea Bank Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Idea Bank Sheet": {
+      "main": [
+        [
+          {
+            "node": "Load Idea Bank1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Idea Bank Rows": {
+      "main": [
+        [
+          {
+            "node": "Write to Idea Bank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write to Idea Bank": {
+      "main": [
+        [
+          {
+            "node": "Research Agent1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Final Concept Row": {
+      "main": [
+        [
+          {
+            "node": "Write to Final Concepts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Load Idea Bank1": {
+      "main": [
+        [
+          {
+            "node": "Generate Ideas — Model A1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Ideas — Model A1": {
+      "main": [
+        [
+          {
+            "node": "Generate Ideas — Model B1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ModelA — OpenRouter1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Ideas — Model A1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory — Model A1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Generate Ideas — Model A1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Ideas — Model B1": {
+      "main": [
+        [
+          {
+            "node": "Compile Outputs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ModelB — OpenRouter1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Generate Ideas — Model B1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Memory — Model B1": {
+      "ai_memory": [
+        [
+          {
+            "node": "Generate Ideas — Model B1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compile Outputs1": {
+      "main": [
+        [
+          {
+            "node": "Dedupe & Normalize Ideas1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dedupe & Normalize Ideas1": {
+      "main": [
+        [
+          {
+            "node": "Prep Idea Bank Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research Agent1": {
+      "main": [
+        [
+          {
+            "node": "Parse Research Results1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Research — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Research Agent1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "Research Agent1",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Research Results1": {
+      "main": [
+        [
+          {
+            "node": "Rank & Pick Top Idea1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rank & Pick Top Idea1": {
+      "main": [
+        [
+          {
+            "node": "Build Concept Packet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PickTop — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Rank & Pick Top Idea1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Concept Packet1": {
+      "main": [
+        [
+          {
+            "node": "Self Critic1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "DraftConcept — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Build Concept Packet1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Self Critic1": {
+      "main": [
+        [
+          {
+            "node": "Repair Concept1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SelfCritic — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Self Critic1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Repair Concept1": {
+      "main": [
+        [
+          {
+            "node": "Draw Mutation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RepairConcept — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Repair Concept1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Draw Mutation1": {
+      "main": [
+        [
+          {
+            "node": "Apply Mutation1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apply Mutation1": {
+      "main": [
+        [
+          {
+            "node": "VC Assassin1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ApplyMutation — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Apply Mutation1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VC Assassin1": {
+      "main": [
+        [
+          {
+            "node": "Merge VC + Concept1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VCAssassin — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "VC Assassin1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge VC + Concept1": {
+      "main": [
+        [
+          {
+            "node": "Respond to VC Assassination1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respond to VC Assassination1": {
+      "main": [
+        [
+          {
+            "node": "Finalize Packet1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "VCRespond — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Respond to VC Assassination1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize Packet1": {
+      "main": [
+        [
+          {
+            "node": "Prep Final Concept Row",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Finalize — OpenRouter Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Finalize Packet1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Search - Model B1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Generate Ideas — Model B1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Web Search — Model A1": {
+      "ai_tool": [
+        [
+          {
+            "node": "Generate Ideas — Model A1",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "4286765c-3826-427e-a1e6-a8ae42144944",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "d1ad3f4f440ce23f8275e30c2127c8c2fe97bf83a4534f480ec0c7a54495b806"
+  },
+  "id": "pCH3ejBs3Yh2AvSq",
+  "tags": []
+}
