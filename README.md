@@ -1,105 +1,109 @@
-# IdeaArena (n8n VC Incubation Tournament)
+﻿# IdeaArena (n8n VC Incubation Tournament)
 
-IdeaArena is an n8n workflow system that runs a **head-to-head startup incubation competition** between two autonomous VC-style teams (`Team A` and `Team B`).
+IdeaArena is an n8n workflow system that runs a head-to-head startup incubation competition between two intentionally different autonomous teams.
 
-Each team independently generates, researches, stress-tests, and hardens ideas. They each submit one final concept packet, then the `Entrepreneur Arena` workflow judges both submissions, selects a winner, and logs results to Google Sheets.
+- Team A: `inventor_lab` (breakthrough-first, science-push, category creation)
+- Team B: `operator_forge` (market-gap, distribution realism, execution focus)
+
+Each team generates and hardens one final concept packet. `Entrepreneur Arena` judges both packets, applies confidence gates and deterministic tie-break logic, and logs results to Google Sheets.
 
 ## Repository structure
 
-- `Entrepreneur Arena` – Orchestrator workflow that runs both teams, judges outcomes, packages the winner, and logs winners/errors.
-- `Team A` – Team workflow for ideation through final packet submission.
-- `Team B` – Parallel team workflow with the same pipeline shape.
+- `Entrepreneur Arena`: orchestrator workflow
+- `Team A`: Team A pipeline export (no `.json` extension)
+- `Team B`: Team B pipeline export (no `.json` extension)
 
-> These files are exported n8n workflow JSON (stored without `.json` extension).
+## v2.1 highlights
 
-## How the system works
+- Distinct team brains with different ideation and ranking prompts.
+- Persona engine with rotating non-overlapping persona pairs (1 named + 1 archetype per team).
+- Signal scout stage before ideation (science, trend/pattern, competition signals).
+- Hybrid dedup (normalized key + semantic similarity heuristic).
+- Deterministic mutation selection using run seed.
+- Neutralize-persona stage before final packet output.
+- Arena confidence gate (`NO_WINNER_LOW_CONFIDENCE`) and deterministic tie-break chain.
+- Credential IDs removed from workflow exports.
 
-## 1) Arena orchestration (`Entrepreneur Arena`)
+## Workflow overview
 
-1. **Manual trigger** starts a run.
-2. **Set Arena Config** initializes run context.
-3. **Execute Team A Runner** and **Execute Team B Runner** call each team workflow.
-4. Team outputs are merged in **Merge Team Packets1**.
-5. **Arena Judge (LLM)** applies a weighted rubric (market, originality, feasibility, differentiation, distribution) and returns scores + winner.
-6. **Winner Packager** creates an executive summary for the winning concept.
-7. **Prep Winners Row1** normalizes/parses outputs into a single logging row.
-8. **Write to Winners1** appends the winner record to Google Sheets (`Winners` tab).
-9. **Log Success** / **Workflow Error Trigger + Log Error** provide observability.
+### Arena orchestration (`Entrepreneur Arena`)
 
-## 2) Team pipeline (`Team A` and `Team B`)
+1. `Manual Trigger`
+2. `Set Arena Config` (code node): initializes run seed, constraints, rubric, persona pool, and team configs.
+3. `Prepare Team A Context` / `Prepare Team B Context`: inject team-specific strategy + personas.
+4. `Execute Team A Runner` / `Execute Team B Runner`
+5. `Merge Team Packets1`
+6. `Arena Judge (LLM)`
+7. `Parse & Gate Verdict1`:
+   - strict parse
+   - confidence threshold gate
+   - deterministic tie-break (`feasibility -> originality -> distribution -> market -> confidence -> stable default`)
+8. `Winner Packager`
+9. `Prep Winners Row1`
+10. `Write to Winners1`
+11. `Log Success`
 
-Each team runs the following sequence:
+### Team pipeline (`Team A` and `Team B`)
 
-1. **Read & load prior ideas** from `Idea Bank` in Google Sheets.
-2. **Dual-model ideation** (`Generate Ideas — Model A/B`) to produce diverse options while avoiding duplicate summaries.
-3. **Compile + dedupe/normalize** generated ideas.
-4. **Append novel ideas** back into `Idea Bank` (memory across runs).
-5. **Research phase** with web search tooling + LLM synthesis.
-6. **Ranking phase** chooses the best candidate idea using weighted constraints (including buildability under 6 months / $25k).
-7. **Concept expansion** into structured startup packet fields.
-8. **Self-critique + repair loop** to fix weaknesses and fatal assumptions.
-9. **Mutation step** (e.g., ICP/pricing/channel/scope/keyFeature) to probe for stronger variants.
-10. **VC assassination + response** adversarial challenge and defense of the concept.
-11. **Finalize packet** with rubric scoring and summary.
-12. **Write to Final Concepts** sheet and return packet to arena orchestrator.
+1. Load prior ideas from `Idea Bank`.
+2. `Signal Scout1` gathers emerging signals.
+3. `Parse Signal Theses1` validates and normalizes signal theses.
+4. Dual-model ideation with team-specific prompts and persona lenses.
+5. Compile + hybrid dedup.
+6. Write novel ideas to `Idea Bank`.
+7. Research phase with web tools.
+8. Parse and validate research payload.
+9. Team-specific ranking.
+10. `Parse Ranked Winner1` for strict winner extraction.
+11. Concept build, critique, repair, deterministic mutation, VC attack/response.
+12. `Neutralize Persona Voice1` removes persona-style language.
+13. Final packet compilation with extended metadata fields.
+14. `Prep Final Concept Row` strict parse and normalization.
+15. `Write to Final Concepts`.
 
-## Data outputs
+## Extended contracts
 
-The workflows use a single Google Sheet document with (at least) these tabs:
+### Team packet additions
 
-- **Idea Bank** – deduplicated historical idea memory (`normalizedKey`, `oneLiner`, metadata).
-- **Final Concepts** – team-level final packets per run.
-- **Winners** – arena-level winning concept + score breakdown + summary/justification.
+- `teamStrategy` (`inventor_lab|operator_forge`)
+- `personaSet` (JSON string in sheet row)
+- `personaRationale`
+- `signalTheses` (JSON string in sheet row)
+- `noveltyScore`
+- `confidenceScore`
+- `horizonBucket`
+- `evidenceCoverage`
+- `decisionRiskFlags` (JSON string in sheet row)
+- `parseStatus`
 
-## What is already strong
+### Arena verdict additions
 
-- Multi-stage adversarial refinement (critic → repair → VC attack → defense).
-- Persistent memory via Idea Bank to reduce repeated concepts.
-- Explicit scoring rubric at both team and arena levels.
-- Run-level IDs and timestamps to improve traceability.
+- `decisionStatus` (`WINNER_SELECTED|NO_WINNER_LOW_CONFIDENCE|INVALID_VERDICT`)
+- `tieBreakTrace`
+- `confidenceGateReason`
+- `teamAConfidence`
+- `teamBConfidence`
 
-## Improvement opportunities
+## Setup checklist
 
-1. **Version and lock prompt contracts**
-   - Centralize expected JSON schemas and validate every LLM output before downstream parsing.
-   - Add explicit fallback/retry when parse fails (currently parsing is regex-based and permissive).
+- Import all three workflows into n8n.
+- Configure credentials:
+  - Google Sheets OAuth2
+  - OpenRouter
+  - Brave Search
+- Configure workflow IDs in environment variables (recommended):
+  - `TEAM_A_WORKFLOW_ID`
+  - `TEAM_B_WORKFLOW_ID`
+- Ensure Google Sheet tabs exist:
+  - `Idea Bank`
+  - `Final Concepts`
+  - `Winners`
+- Ensure `Execute Team A Runner` and `Execute Team B Runner` can resolve the imported team workflow IDs.
 
-2. **Harden structured output handling**
-   - Use stricter n8n JSON/structured-output nodes (or schema-enforced parser code) instead of `match(/\{[\s\S]*\}/)` extraction.
-   - Log malformed payloads into a dedicated sheet for debugging.
-
-3. **Introduce deterministic tie-breaking**
-   - If `teamAScore === teamBScore`, add explicit tie-break policy (e.g., higher feasibility wins; then originality).
-
-4. **Calibrate randomness for reproducibility**
-   - Mutation selection is random; consider storing seed/config so runs are replayable and experiments are comparable.
-
-5. **Separate credentials and IDs from export docs**
-   - Keep README instructions for required credentials (`OpenRouter`, `Google Sheets`, `Brave Search`) and avoid hardcoding IDs in shared exports when possible.
-
-6. **Add basic quality metrics dashboard**
-   - Track per-run novelty score, parse-failure count, winner distribution, and idea reuse rate over time.
-
-7. **Create a quickstart for local import**
-   - Document exact import order and required n8n community nodes/plugins.
-
-## Suggested operating procedure
+## Suggested validation run
 
 1. Trigger `Entrepreneur Arena` manually.
-2. Confirm both team executions return packet outputs.
-3. Review `Winners` row for score consistency and rubric rationale.
-4. Periodically inspect `Idea Bank` for quality drift and prune low-value ideas.
-
-## Quick setup checklist
-
-- n8n instance with workflows imported.
-- Credentials configured:
-  - Google Sheets OAuth2
-  - OpenRouter chat model credentials
-  - Brave Search tool credentials/node
-- Shared Google Sheet with expected tabs/columns.
-- Workflow IDs in `Execute Team A Runner` and `Execute Team B Runner` pointed to the imported team workflows.
-
----
-
-If you want, the next improvement pass can include a **schema-validation node set** + **retry policy design** directly in these workflow JSON files so malformed model output can never silently pass downstream.
+2. Confirm `Set Arena Config` emits team contexts with personas.
+3. Confirm each team executes `Signal Scout1` and logs one final concept row.
+4. Confirm `Winners` row includes `decisionStatus`, confidence fields, and tie-break trace when applicable.
+5. Re-run with same seed context and compare deterministic mutation behavior.

@@ -14,12 +14,12 @@
     },
     {
       "parameters": {
-        "options": {}
+        "jsCode": "const runSeed = String($execution.id);\nconst teamAWorkflowId = $env.TEAM_A_WORKFLOW_ID || '44q3twpOWG797oot';\nconst teamBWorkflowId = $env.TEAM_B_WORKFLOW_ID || 'pCH3ejBs3Yh2AvSq';\nconst constraints = { maxBuildMonths: 6, maxBudgetUsd: 25000, avoidTwoSidedColdStart: true };\nconst rubric = { market: 25, originality: 20, feasibility: 20, differentiation: 20, distribution: 15 };\nconst confidenceThreshold = 70;\nconst personaPool = [\n  { id: 'steve_jobs', kind: 'named', displayName: 'Steve Jobs', decisionRules: ['Design-led wedge','Own core moment'], favoredBets: ['Category UX shifts'], blindSpots: ['Ops depth'], antiPatterns: ['Feature bloat'], killerQuestions: ['What is magical?'] },\n  { id: 'bill_gates', kind: 'named', displayName: 'Bill Gates', decisionRules: ['Platform leverage','Distribution matters'], favoredBets: ['Developer ecosystems'], blindSpots: ['Consumer emotion'], antiPatterns: ['No platform path'], killerQuestions: ['Where is compounding moat?'] },\n  { id: 'sara_blakely', kind: 'named', displayName: 'Sara Blakely', decisionRules: ['Pain must be visceral'], favoredBets: ['Underserved segments'], blindSpots: ['Deep-tech optimism'], antiPatterns: ['Generic messaging'], killerQuestions: ['Why will users talk about it?'] },\n  { id: 'elon_musk', kind: 'named', displayName: 'Elon Musk', decisionRules: ['First-principles cuts'], favoredBets: ['Hard bottlenecks'], blindSpots: ['Near-term GTM'], antiPatterns: ['Incremental only'], killerQuestions: ['What is 10x better?'] },\n  { id: 'visionary_arch', kind: 'archetype', displayName: 'Visionary Architect', decisionRules: ['Backcast from future'], favoredBets: ['Category creation'], blindSpots: ['Execution detail'], antiPatterns: ['Me-too ideas'], killerQuestions: ['Why now?'] },\n  { id: 'operator_arch', kind: 'archetype', displayName: 'Operator', decisionRules: ['Execution friction first'], favoredBets: ['Channel wedges'], blindSpots: ['Moonshots'], antiPatterns: ['No channel plan'], killerQuestions: ['How do first 100 customers arrive?'] },\n  { id: 'systems_arch', kind: 'archetype', displayName: 'Systems Thinker', decisionRules: ['Map dependencies'], favoredBets: ['Workflow infrastructure'], blindSpots: ['Brand pull'], antiPatterns: ['Point tools'], killerQuestions: ['What compounds?'] },\n  { id: 'deal_maker_arch', kind: 'archetype', displayName: 'Deal Maker', decisionRules: ['Partnership leverage'], favoredBets: ['Ecosystem plays'], blindSpots: ['Deep product craft'], antiPatterns: ['Go-it-alone channels'], killerQuestions: ['Who distributes this?'] }\n];\nfunction hash(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0); }\nfunction sortBySeed(arr, salt) { return [...arr].sort((a,b) => hash(runSeed + salt + a.id) - hash(runSeed + salt + b.id)); }\nconst named = sortBySeed(personaPool.filter(p => p.kind === 'named'), 'named');\nconst arch = sortBySeed(personaPool.filter(p => p.kind === 'archetype'), 'arch');\nreturn [{ json: {\n  runId: $execution.id,\n  runAt: new Date().toISOString(),\n  runSeed,\n  constraints,\n  rubric,\n  confidenceThreshold,\n  personaPoolVersion: 'v2.1',\n  teamConfigs: {\n    A: { teamWorkflowId: teamAWorkflowId, teamStrategy: 'inventor_lab', assignedPersonas: [named[0], arch[0]] },\n    B: { teamWorkflowId: teamBWorkflowId, teamStrategy: 'operator_forge', assignedPersonas: [named[1], arch[1]] }\n  }\n}}];"
       },
       "id": "66dd2d76-000e-4619-932a-bd98fbfb67b8",
       "name": "Set Arena Config",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3,
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
       "position": [
         -32,
         320
@@ -27,7 +27,7 @@
     },
     {
       "parameters": {
-        "workflowId": "44q3twpOWG797oot",
+        "workflowId": "={{ $json.teamWorkflowId }}",
         "options": {}
       },
       "id": "6c393d5d-93ab-4fc9-a887-7a2d76e545d9",
@@ -35,13 +35,13 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        192,
+        448,
         224
       ]
     },
     {
       "parameters": {
-        "workflowId": "pCH3ejBs3Yh2AvSq",
+        "workflowId": "={{ $json.teamWorkflowId }}",
         "options": {}
       },
       "id": "d2f00f1a-f1d8-45e5-b265-5135d1b283b1",
@@ -49,14 +49,14 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1,
       "position": [
-        192,
+        448,
         416
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are an impartial arena judge evaluating two competing startup pitches. Score each using the rubric below and declare a winner.\n\nRubric (must sum to 100):\n- market (0-25): Is the market large, urgent, and willing to pay?\n- originality (0-20): Is this idea novel with no dominant incumbent?\n- feasibility (0-20): Can this realistically be built in 6 months on $25k?\n- differentiation (0-20): Does it have a clear unfair advantage or moat?\n- distribution (0-15): Is there a clear, realistic first channel and distribution path?\n\nTeam A Packet:\n{{ JSON.stringify($input.all()[0].json) }}\n\nTeam B Packet:\n{{ JSON.stringify($input.all()[1].json) }}\n\nReturn ONLY a JSON object with fields:\n- teamAScore (integer 0-100)\n- teamBScore (integer 0-100)\n- teamARubric: { market, originality, feasibility, differentiation, distribution }\n- teamBRubric: { market, originality, feasibility, differentiation, distribution }\n- winner (\"A\" or \"B\")\n- winningConcept (the full concept object of the winner — copy from the winning team packet's concept field)\n- justification (string — explain the scoring delta between the two teams, referencing specific rubric dimensions)\n\nNo markdown. No explanation. Just the JSON object."
+        "text": "=You are an impartial arena judge.\nScore Team A and Team B with rubric totals out of 100.\nReturn ONLY JSON with fields:\nteamAScore, teamBScore,\nteamARubric { market, originality, feasibility, differentiation, distribution },\nteamBRubric { market, originality, feasibility, differentiation, distribution },\njustification,\ndecisionRiskFlags (array).\nTeam A Packet: {{ JSON.stringify($input.all()[0].json) }}\nTeam B Packet: {{ JSON.stringify($input.all()[1].json) }}"
       },
       "id": "583e2eae-af46-471a-af5e-7f5d819f857d",
       "name": "Arena Judge (LLM)",
@@ -82,7 +82,6 @@
       ],
       "credentials": {
         "openRouterApi": {
-          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -90,7 +89,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are a business writer. Take this winning startup concept and produce a polished one-page executive summary.\n\nReturn ONLY a JSON object with fields:\n- headline (string)\n- executiveSummary (string)\n- keyStrengths (array of strings)\n- nextSteps (array of strings)\n\nNo markdown. No explanation. Just the JSON object.\n\nWinner data:\n{{ $json.output || $json.text }}"
+        "text": "=Convert this decision payload into an executive summary.\nIf decisionStatus is not WINNER_SELECTED, summarize why no winner was chosen and list next steps.\nReturn ONLY JSON fields: headline, executiveSummary, keyStrengths (array), nextSteps (array).\nDecision payload: {{ JSON.stringify($json) }}"
       },
       "id": "7295f8ef-0144-4f76-977d-e6db1584c2a6",
       "name": "Winner Packager",
@@ -116,14 +115,13 @@
       ],
       "credentials": {
         "openRouterApi": {
-          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "console.log(`[${new Date().toISOString()}] Entrepreneur Arena completed successfully.`);\nconsole.log('Winner:', items[0]?.json?.winner);\nconsole.log('Concept:', items[0]?.json?.conceptName);\nconsole.log('Scores — A:', items[0]?.json?.teamAScore, '| B:', items[0]?.json?.teamBScore);\nreturn items;"
+        "jsCode": "console.log('[' + new Date().toISOString() + '] Entrepreneur Arena completed.');\nconsole.log('Decision status:', items[0]?.json?.decisionStatus);\nconsole.log('Winner:', items[0]?.json?.winner || 'NONE');\nconsole.log('Scores - A:', items[0]?.json?.teamAScore, '| B:', items[0]?.json?.teamBScore);\nconsole.log('Confidence - A:', items[0]?.json?.teamAConfidence, '| B:', items[0]?.json?.teamBConfidence);\nreturn items;"
       },
       "id": "cd9d77e5-169f-4c68-8935-942c46ed3fc7",
       "name": "Log Success",
@@ -171,7 +169,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// ── Parse Winner Packager output ─────────────────────────────────────────────\nconst rawPackager = items[0]?.json?.output || items[0]?.json?.text || '';\nlet packager = {};\ntry {\n  const m = rawPackager.match(/\\{[\\s\\S]*\\}/);\n  if (m) packager = JSON.parse(m[0]);\n} catch(e) {}\n\n// ── Parse Arena Judge output ──────────────────────────────────────────────────\nconst rawJudge = $('Arena Judge (LLM)').first().json?.output || $('Arena Judge (LLM)').first().json?.text || '';\nlet judge = {};\ntry {\n  const m = rawJudge.match(/\\{[\\s\\S]*\\}/);\n  if (m) judge = JSON.parse(m[0]);\n} catch(e) {}\n\n// ── Pull team packets directly from the Merge node's two output items ────────\nconst mergeItems = $('Merge Team Packets1').all();\nconst teamA = mergeItems[0]?.json || {};\nconst teamB = mergeItems[1]?.json || {};\n\nconst keyStrengths = Array.isArray(packager.keyStrengths)\n  ? packager.keyStrengths.join(' | ')\n  : '';\nconst nextSteps = Array.isArray(packager.nextSteps)\n  ? packager.nextSteps.join(' | ')\n  : '';\n\nconst winnerTeam = judge.winner || '';\nconst winningPacket = winnerTeam === 'A' ? teamA : teamB;\n\nreturn [{\n  json: {\n    runId: $execution.id,\n    runAt: new Date().toISOString(),\n    winner: winnerTeam,\n    headline: packager.headline || '',\n    executiveSummary: packager.executiveSummary || '',\n    keyStrengths,\n    nextSteps,\n    justification: judge.justification || '',\n    teamAScore: judge.teamAScore || 0,\n    teamBScore: judge.teamBScore || 0,\n    conceptName: winningPacket.name || '',\n    oneLiner: winningPacket.oneLiner || '',\n    targetCustomer: winningPacket.targetCustomer || '',\n    problem: winningPacket.problem || '',\n    solution: winningPacket.solution || '',\n    revenueModel: winningPacket.revenueModel || '',\n    goToMarket: winningPacket.goToMarket || '',\n    unfairAdvantage: winningPacket.unfairAdvantage || '',\n    keyRisks: winningPacket.keyRisks || '',\n    overallStrength: winningPacket.overallStrength || 0,\n    market: winnerTeam === 'A' ? judge.teamARubric?.market || 0 : judge.teamBRubric?.market || 0,\n    originality: winnerTeam === 'A' ? judge.teamARubric?.originality || 0 : judge.teamBRubric?.originality || 0,\n    feasibility: winnerTeam === 'A' ? judge.teamARubric?.feasibility || 0 : judge.teamBRubric?.feasibility || 0,\n    differentiation: winnerTeam === 'A' ? judge.teamARubric?.differentiation || 0 : judge.teamBRubric?.differentiation || 0,\n    distribution: winnerTeam === 'A' ? judge.teamARubric?.distribution || 0 : judge.teamBRubric?.distribution || 0,\n    summary: winningPacket.summary || ''\n  }\n}];"
+        "jsCode": "const raw = items[0]?.json?.output || items[0]?.json?.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet p = tryParse(raw);\nif (!p) {\n  const a = String(raw).indexOf('{'); const b = String(raw).lastIndexOf('}');\n  if (a >= 0 && b > a) p = tryParse(String(raw).slice(a, b + 1));\n}\nif (!p || typeof p !== 'object') throw new Error('Winner Packager parse failed.');\nconst verdict = $('Parse & Gate Verdict1').first().json || {};\nconst win = verdict.winningPacket || {};\nconst team = verdict.winner || '';\nconst rubric = team === 'A' ? verdict.teamARubric || {} : team === 'B' ? verdict.teamBRubric || {} : {};\nconst ks = Array.isArray(p.keyStrengths) ? p.keyStrengths.join(' | ') : '';\nconst ns = Array.isArray(p.nextSteps) ? p.nextSteps.join(' | ') : '';\nreturn [{ json: {\n  runId: verdict.runId || $execution.id,\n  runAt: verdict.runAt || new Date().toISOString(),\n  winner: team,\n  decisionStatus: verdict.decisionStatus || 'INVALID_VERDICT',\n  tieBreakTrace: verdict.tieBreakTrace || '',\n  confidenceGateReason: verdict.confidenceGateReason || '',\n  teamAConfidence: verdict.teamAConfidence || 0,\n  teamBConfidence: verdict.teamBConfidence || 0,\n  headline: p.headline || '',\n  executiveSummary: p.executiveSummary || '',\n  keyStrengths: ks,\n  nextSteps: ns,\n  justification: verdict.justification || '',\n  decisionRiskFlags: JSON.stringify(verdict.decisionRiskFlags || []),\n  teamAScore: verdict.teamAScore || 0,\n  teamBScore: verdict.teamBScore || 0,\n  conceptName: win.name || '',\n  name: win.name || '',\n  oneLiner: win.oneLiner || '',\n  targetCustomer: win.targetCustomer || '',\n  problem: win.problem || '',\n  solution: win.solution || '',\n  revenueModel: win.revenueModel || '',\n  goToMarket: win.goToMarket || '',\n  unfairAdvantage: win.unfairAdvantage || '',\n  keyRisks: win.keyRisks || '',\n  mutationApplied: win.mutationApplied || '',\n  teamStrategy: win.teamStrategy || '',\n  personaSet: win.personaSet || '',\n  personaRationale: win.personaRationale || '',\n  signalTheses: win.signalTheses || '',\n  noveltyScore: Number(win.noveltyScore || 0),\n  confidenceScore: Number(win.confidenceScore || 0),\n  horizonBucket: win.horizonBucket || '',\n  evidenceCoverage: Number(win.evidenceCoverage || 0),\n  overallStrength: win.overallStrength || 0,\n  market: Number(rubric.market || 0),\n  originality: Number(rubric.originality || 0),\n  feasibility: Number(rubric.feasibility || 0),\n  differentiation: Number(rubric.differentiation || 0),\n  distribution: Number(rubric.distribution || 0),\n  summary: win.summary || '',\n  vcQA: win.vcQA || '',\n  vcResponses: win.vcResponses || ''\n}}];"
       },
       "id": "9c7a1f1a-5da9-4c3d-9eeb-3faaad71d4e3",
       "name": "Prep Winners Row1",
@@ -492,6 +490,146 @@
               "type": "string",
               "canBeUsedToMatch": true,
               "removed": false
+            },
+            {
+              "id": "decisionStatus",
+              "displayName": "decisionStatus",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "tieBreakTrace",
+              "displayName": "tieBreakTrace",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confidenceGateReason",
+              "displayName": "confidenceGateReason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teamAConfidence",
+              "displayName": "teamAConfidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teamBConfidence",
+              "displayName": "teamBConfidence",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "teamStrategy",
+              "displayName": "teamStrategy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "personaSet",
+              "displayName": "personaSet",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "personaRationale",
+              "displayName": "personaRationale",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "signalTheses",
+              "displayName": "signalTheses",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "noveltyScore",
+              "displayName": "noveltyScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "confidenceScore",
+              "displayName": "confidenceScore",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "horizonBucket",
+              "displayName": "horizonBucket",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "evidenceCoverage",
+              "displayName": "evidenceCoverage",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "decisionRiskFlags",
+              "displayName": "decisionRiskFlags",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
@@ -509,10 +647,48 @@
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "qyPt3FUHxVuvnsiP",
           "name": "Google Sheets account"
         }
       }
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json || {};\nconst t = cfg.teamConfigs?.A || {};\nreturn [{ json: {\n  runId: cfg.runId,\n  runAt: cfg.runAt,\n  runSeed: cfg.runSeed,\n  constraints: cfg.constraints,\n  rubric: cfg.rubric,\n  confidenceThreshold: cfg.confidenceThreshold,\n  personaPoolVersion: cfg.personaPoolVersion,\n  teamLabel: 'A',\n  teamStrategy: t.teamStrategy || 'inventor_lab',\n  assignedPersonas: t.assignedPersonas || [],\n  teamWorkflowId: t.teamWorkflowId || ''\n}}];"
+      },
+      "id": "4e6f900e-d5e1-46d9-a3f8-bf4d95afeb3c",
+      "name": "Prepare Team A Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        224
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const cfg = $input.first().json || {};\nconst t = cfg.teamConfigs?.B || {};\nreturn [{ json: {\n  runId: cfg.runId,\n  runAt: cfg.runAt,\n  runSeed: cfg.runSeed,\n  constraints: cfg.constraints,\n  rubric: cfg.rubric,\n  confidenceThreshold: cfg.confidenceThreshold,\n  personaPoolVersion: cfg.personaPoolVersion,\n  teamLabel: 'B',\n  teamStrategy: t.teamStrategy || 'operator_forge',\n  assignedPersonas: t.assignedPersonas || [],\n  teamWorkflowId: t.teamWorkflowId || ''\n}}];"
+      },
+      "id": "5c9bf5c8-2f8f-4d3f-8d5b-6da6a4b6a35e",
+      "name": "Prepare Team B Context",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        416
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet j = tryParse(raw);\nif (!j) {\n  const a = String(raw).indexOf('{'); const b = String(raw).lastIndexOf('}');\n  if (a >= 0 && b > a) j = tryParse(String(raw).slice(a, b + 1));\n}\nif (!j || typeof j !== 'object') throw new Error('Arena judge parse failed; stopping run.');\nconst num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;\nconst teamAScore = num(j.teamAScore);\nconst teamBScore = num(j.teamBScore);\nconst teamARubric = j.teamARubric || {};\nconst teamBRubric = j.teamBRubric || {};\nconst m = $('Merge Team Packets1').all();\nif (m.length < 2) throw new Error('Missing team packets from merge.');\nconst aPkt = m[0]?.json || {};\nconst bPkt = m[1]?.json || {};\nconst threshold = num($('Set Arena Config').first().json.confidenceThreshold || 70);\nconst aConf = num(aPkt.confidenceScore);\nconst bConf = num(bPkt.confidenceScore);\nlet winner = '';\nlet tieBreakTrace = '';\nif (teamAScore > teamBScore) winner = 'A';\nif (teamBScore > teamAScore) winner = 'B';\nif (!winner) {\n  const dims = ['feasibility','originality','distribution','market'];\n  for (const d of dims) {\n    const av = num(teamARubric[d]);\n    const bv = num(teamBRubric[d]);\n    if (av === bv) continue;\n    winner = av > bv ? 'A' : 'B';\n    tieBreakTrace = d + ':' + av + '-' + bv;\n    break;\n  }\n  if (!winner) {\n    if (aConf !== bConf) {\n      winner = aConf > bConf ? 'A' : 'B';\n      tieBreakTrace = (tieBreakTrace ? tieBreakTrace + '|' : '') + 'confidence:' + aConf + '-' + bConf;\n    } else {\n      winner = 'A';\n      tieBreakTrace = (tieBreakTrace ? tieBreakTrace + '|' : '') + 'stable_default:A';\n    }\n  }\n}\nlet decisionStatus = 'WINNER_SELECTED';\nlet confidenceGateReason = '';\nif (aConf < threshold && bConf < threshold) {\n  decisionStatus = 'NO_WINNER_LOW_CONFIDENCE';\n  winner = '';\n  confidenceGateReason = 'Both teams below confidence threshold ' + threshold;\n} else if (winner === 'A' && aConf < threshold && bConf >= threshold) {\n  winner = 'B';\n  confidenceGateReason = 'Team A below threshold; winner overridden to Team B';\n  tieBreakTrace = (tieBreakTrace ? tieBreakTrace + '|' : '') + 'confidence_override:B';\n} else if (winner === 'B' && bConf < threshold && aConf >= threshold) {\n  winner = 'A';\n  confidenceGateReason = 'Team B below threshold; winner overridden to Team A';\n  tieBreakTrace = (tieBreakTrace ? tieBreakTrace + '|' : '') + 'confidence_override:A';\n}\nconst winningPacket = winner === 'A' ? aPkt : winner === 'B' ? bPkt : {};\nreturn [{ json: {\n  runId: $execution.id,\n  runAt: new Date().toISOString(),\n  decisionStatus,\n  winner,\n  tieBreakTrace,\n  confidenceGateReason,\n  teamAScore,\n  teamBScore,\n  teamARubric,\n  teamBRubric,\n  teamAConfidence: aConf,\n  teamBConfidence: bConf,\n  justification: j.justification || '',\n  decisionRiskFlags: Array.isArray(j.decisionRiskFlags) ? j.decisionRiskFlags : [],\n  winningPacket\n}}];"
+      },
+      "id": "41f5b2fa-2850-4e1f-a42c-3ce1ab35fd95",
+      "name": "Parse & Gate Verdict1",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        864,
+        320
+      ]
     }
   ],
   "pinData": {
@@ -541,12 +717,12 @@
       "main": [
         [
           {
-            "node": "Execute Team A Runner",
+            "node": "Prepare Team A Context",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Execute Team B Runner",
+            "node": "Prepare Team B Context",
             "type": "main",
             "index": 0
           }
@@ -590,7 +766,7 @@
       "main": [
         [
           {
-            "node": "Winner Packager",
+            "node": "Parse & Gate Verdict1",
             "type": "main",
             "index": 0
           }
@@ -657,6 +833,39 @@
         [
           {
             "node": "Log Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Team A Context": {
+      "main": [
+        [
+          {
+            "node": "Execute Team A Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Team B Context": {
+      "main": [
+        [
+          {
+            "node": "Execute Team B Runner",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse & Gate Verdict1": {
+      "main": [
+        [
+          {
+            "node": "Winner Packager",
             "type": "main",
             "index": 0
           }
