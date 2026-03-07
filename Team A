@@ -2,17 +2,6 @@
   "name": "Team A",
   "nodes": [
     {
-      "parameters": {},
-      "id": "e9085268-375a-426c-9f7a-018c72dc8ea4",
-      "name": "Team Runner Trigger",
-      "type": "n8n-nodes-base.executeWorkflowTrigger",
-      "typeVersion": 1,
-      "position": [
-        3984,
-        -1056
-      ]
-    },
-    {
       "parameters": {
         "documentId": {
           "__rl": true,
@@ -37,17 +26,18 @@
         },
         "options": {}
       },
-      "id": "7adfb620-7a1a-465a-b64b-6bb64ca90501",
+      "id": "2263174c-9a1f-4bb9-b06f-d4749a0d3da8",
       "name": "Read Idea Bank Sheet",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
       "position": [
-        4192,
-        -1072
+        -624,
+        -1632
       ],
       "alwaysOutputData": true,
       "credentials": {
         "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
           "name": "Google Sheets account"
         }
       }
@@ -56,13 +46,13 @@
       "parameters": {
         "jsCode": "// ── Shape one row per deduplicated idea for Google Sheets append ──────────────\nconst ideas = $('Dedupe & Normalize Ideas1').first().json.ideas || [];\nconst runId = $execution.id;\nconst addedAt = new Date().toISOString();\n\nif (ideas.length === 0) {\n  // Return a no-op item so the workflow doesn't stall\n  return [{ json: { skipped: true, reason: 'No new ideas to write' } }];\n}\n\nreturn ideas.map(idea => ({\n  json: {\n    normalizedKey: idea.normalizedKey,\n    oneLiner: idea.oneLiner,\n    addedAt,\n    runId,\n  }\n}));"
       },
-      "id": "acb9d865-66de-49d1-8364-fce59ea20e20",
+      "id": "842879f4-b98f-42c1-b685-6422107de8fb",
       "name": "Prep Idea Bank Rows",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6016,
-        -1072
+        1200,
+        -1632
       ]
     },
     {
@@ -133,31 +123,32 @@
         },
         "options": {}
       },
-      "id": "9efc5904-a095-44fa-b292-2cfb47b81e67",
+      "id": "1dc3fbc7-a166-4d7b-b496-32edb54695e0",
       "name": "Write to Idea Bank",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
       "position": [
-        6240,
-        -1072
+        1424,
+        -1632
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
           "name": "Google Sheets account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const raw = items[0]?.json?.output || items[0]?.json?.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet p = tryParse(raw);\nif (!p) {\n  const a = String(raw).indexOf('{'); const b = String(raw).lastIndexOf('}');\n  if (a >= 0 && b > a) p = tryParse(String(raw).slice(a, b + 1));\n}\nif (!p || typeof p !== 'object' || !p.concept || typeof p.concept !== 'object') throw new Error('Finalize packet parse failed.');\nconst c = p.concept;\nconst r = p.rubricScores || {};\nconst num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;\nconst personaSet = Array.isArray(p.personaSet) ? p.personaSet : [];\nconst signalTheses = Array.isArray(p.signalTheses) ? p.signalTheses : [];\nconst decisionRiskFlags = Array.isArray(p.decisionRiskFlags) ? p.decisionRiskFlags : [];\nconst vcQA = Array.isArray(p.vcQA) ? p.vcQA : [];\nconst vcResponses = Array.isArray(p.vcResponses) ? p.vcResponses : [];\nreturn [{ json: {\n  runId: $execution.id,\n  runAt: new Date().toISOString(),\n  name: c.name || '',\n  oneLiner: c.oneLiner || '',\n  targetCustomer: c.targetCustomer || '',\n  problem: c.problem || '',\n  solution: c.solution || '',\n  revenueModel: c.revenueModel || '',\n  goToMarket: c.goToMarket || '',\n  unfairAdvantage: c.unfairAdvantage || '',\n  keyRisks: c.keyRisks || '',\n  mutationApplied: $('Draw Mutation1').first().json.mutation || '',\n  overallStrength: num(p.overallStrength),\n  market: num(r.market),\n  originality: num(r.originality),\n  feasibility: num(r.feasibility),\n  differentiation: num(r.differentiation),\n  goToMarketScore: num(r.distribution),\n  summary: p.summary || '',\n  teamStrategy: p.teamStrategy || $('Load Idea Bank1').first().json.teamStrategy || '',\n  personaSet: JSON.stringify(personaSet),\n  personaRationale: p.personaRationale || '',\n  signalTheses: JSON.stringify(signalTheses),\n  noveltyScore: num(p.noveltyScore),\n  confidenceScore: num(p.confidenceScore),\n  horizonBucket: p.horizonBucket || 'barbell',\n  evidenceCoverage: num(p.evidenceCoverage),\n  decisionRiskFlags: JSON.stringify(decisionRiskFlags),\n  parseStatus: 'validated',\n  vcQA: JSON.stringify(vcQA),\n  vcResponses: JSON.stringify(vcResponses)\n}}];"
+        "jsCode": "// ── Parse the Finalize Packet output ─────────────────────────────────────────\nconst raw = items[0]?.json?.output || items[0]?.json?.text || '';\n\nlet packet = {};\ntry {\n  const match = raw.match(/\\{[\\s\\S]*\\}/);\n  if (match) packet = JSON.parse(match[0]);\n} catch(e) {}\n\nconst concept = packet.concept || {};\nconst rubric = packet.rubricScores || {};\nconst mutationApplied = $('Draw Mutation1').first().json.mutation || '';\n\nreturn [{\n  json: {\n    runId: $execution.id,\n    runAt: new Date().toISOString(),\n    name: concept.name || '',\n    oneLiner: concept.oneLiner || '',\n    targetCustomer: concept.targetCustomer || '',\n    problem: concept.problem || '',\n    solution: concept.solution || '',\n    revenueModel: concept.revenueModel || '',\n    goToMarket: concept.goToMarket || '',\n    unfairAdvantage: concept.unfairAdvantage || '',\n    keyRisks: concept.keyRisks || '',\n    mutationApplied,\n    overallStrength: packet.overallStrength || 0,\n    market: rubric.market || 0,\n    originality: rubric.originality || 0,\n    feasibility: rubric.feasibility || 0,\n    differentiation: rubric.differentiation || 0,\n    goToMarketScore: rubric.distribution || 0,\n    summary: packet.summary || '',\n    vcQA: packet.vcQA || [],\n    vcResponses: packet.vcResponses || []\n  }\n}];"
       },
-      "id": "c0fa72db-a319-40f9-9819-c8d44489b887",
+      "id": "856fc21a-15c9-40b4-900d-79e5be81547b",
       "name": "Prep Final Concept Row",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        10416,
-        -1072
+        5488,
+        -1632
       ]
     },
     {
@@ -371,126 +362,6 @@
               "type": "string",
               "canBeUsedToMatch": true,
               "removed": false
-            },
-            {
-              "id": "teamStrategy",
-              "displayName": "teamStrategy",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "personaSet",
-              "displayName": "personaSet",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "personaRationale",
-              "displayName": "personaRationale",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "signalTheses",
-              "displayName": "signalTheses",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "noveltyScore",
-              "displayName": "noveltyScore",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "confidenceScore",
-              "displayName": "confidenceScore",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "horizonBucket",
-              "displayName": "horizonBucket",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "evidenceCoverage",
-              "displayName": "evidenceCoverage",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "decisionRiskFlags",
-              "displayName": "decisionRiskFlags",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "parseStatus",
-              "displayName": "parseStatus",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "vcQA",
-              "displayName": "vcQA",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
-            },
-            {
-              "id": "vcResponses",
-              "displayName": "vcResponses",
-              "required": false,
-              "defaultMatch": false,
-              "display": true,
-              "type": "string",
-              "canBeUsedToMatch": true,
-              "removed": false
             }
           ],
           "attemptToConvertTypes": false,
@@ -498,46 +369,47 @@
         },
         "options": {}
       },
-      "id": "591224c1-929f-4898-bcd9-f21412353c0e",
+      "id": "79e75ba7-b278-435d-b0c9-20e97504fbf3",
       "name": "Write to Final Concepts",
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4,
       "position": [
-        10640,
-        -1072
+        5712,
+        -1632
       ],
       "credentials": {
         "googleSheetsOAuth2Api": {
+          "id": "qyPt3FUHxVuvnsiP",
           "name": "Google Sheets account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const rows = items.map(i => i.json || {});\nconst existingSummaries = rows.map(r => r.oneLiner || '').filter(Boolean);\nconst existingKeys = rows.map(r => r.normalizedKey || '').filter(Boolean);\nconst t = $('Team Runner Trigger').first().json || {};\nreturn [{ json: {\n  existingSummaries,\n  existingKeys,\n  triggerContext: { constraints: t.constraints || {}, rubric: t.rubric || {}, confidenceThreshold: t.confidenceThreshold || 70 },\n  teamStrategy: t.teamStrategy || 'inventor_lab',\n  teamLabel: t.teamLabel || 'A',\n  assignedPersonas: t.assignedPersonas || [],\n  runSeed: String(t.runSeed || $execution.id),\n  personaPoolVersion: t.personaPoolVersion || 'v2.1'\n}}];"
+        "jsCode": "// ── Rows come from the Google Sheets Read node upstream ──────────────────────\nconst sheetRows = items.map(i => i.json);\n\n// ── Build summaries list for injection into generation prompts ────────────────\nconst existingSummaries = sheetRows\n  .map(r => r.oneLiner || '')\n  .filter(Boolean);\n\n// ── Build normalized key set for dedup later ──────────────────────────────────\nconst existingKeys = sheetRows\n  .map(r => r.normalizedKey || '')\n  .filter(Boolean);\n\n// ── Pull triggerContext from the workflow trigger (passed by Arena parent) ─────\nconst triggerData = $('Team Runner Trigger').first().json || {};\nconst triggerContext = {\n  constraints: triggerData.constraints || {},\n  rubric: triggerData.rubric || {}\n};\n\nreturn [{ json: { existingSummaries, existingKeys, triggerContext } }];"
       },
-      "id": "fffca082-999d-49a6-888b-a4523cf8ecd2",
+      "id": "1111e6de-5a86-4121-ac1f-2145263d398a",
       "name": "Load Idea Bank1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4416,
-        -1072
+        -400,
+        -1632
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are Team A (Inventor Lab). Focus on science-push and category-creation ideas.\nUse persona cards as principles, not writing style mimicry.\nTeam strategy: {{ $json.teamStrategy }}\nAssigned personas: {{ JSON.stringify($json.assignedPersonas) }}\nSignal theses: {{ JSON.stringify($json.signalTheses) }}\nAvoid prior ideas: {{ JSON.stringify($json.existingSummaries) }}\nGenerate 4 ideas. At least 2 must be linked to science/technical unlocks.\nReturn ONLY JSON array fields: oneLiner,targetCustomer,problem,revenueModel,signalRefs,noveltyHypothesis,horizonBucket,personaRationale",
+        "text": "=Generate 3 unusual and diverse business ideas. Prioritize novelty and surprise — think contrarian, niche, or counterintuitive. Challenge assumptions about who the customer is or what the problem actually is. Avoid ideas that require a two-sided marketplace as a cold-start mechanism.\n\nIMPORTANT: The following ideas have already been generated — do NOT recreate or closely echo any of them:\n{{ JSON.stringify($json.existingSummaries) }}\n\nFor each idea return a JSON object with fields: oneLiner, targetCustomer, problem, revenueModel.\nContext: {{ JSON.stringify($json.triggerContext) }}\nReturn a JSON array of 3 objects.",
         "options": {}
       },
-      "id": "e36e14f2-bb19-4ce1-9aa4-c5d6b37402f3",
+      "id": "6f56e021-5b33-489a-950c-8d8f79ba50c8",
       "name": "Generate Ideas — Model A1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        4704,
-        -1072
+        -128,
+        -1632
       ]
     },
     {
@@ -545,16 +417,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "53f4a20f-eec8-4cca-aa74-357eaa13ea1c",
+      "id": "a2a0e8f2-ce08-43e3-bd22-d1efa75a377c",
       "name": "ModelA — OpenRouter1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        4640,
-        -848
+        -176,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -564,28 +437,28 @@
         "sessionIdType": "customKey",
         "sessionKey": "={{ $workflow.id }}-modelA"
       },
-      "id": "70103484-0969-4566-a4dd-0908230eccdc",
+      "id": "38103af7-c2f0-4cb9-94ce-8db48d426380",
       "name": "Memory — Model A1",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        4768,
-        -848
+        -48,
+        -1408
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Team A second pass with different thought paths from Model A.\nUse trend-collision and frontier edge cases.\nTeam strategy: {{ $('Load Idea Bank1').item.json.teamStrategy }}\nAssigned personas: {{ JSON.stringify($('Load Idea Bank1').item.json.assignedPersonas) }}\nSignal theses: {{ JSON.stringify($('Parse Signal Theses1').item.json.signalTheses) }}\nPrior ideas: {{ JSON.stringify($('Load Idea Bank1').item.json.existingSummaries) }}\nModel A output: {{ $('Generate Ideas ? Model A1').item.json.output }}\nReturn ONLY JSON array fields: oneLiner,targetCustomer,problem,revenueModel,signalRefs,noveltyHypothesis,horizonBucket,personaRationale",
+        "text": "=Generate 3 alternative business ideas using trend collision and edge-case thinking. Use these creative lenses: (1) pair two unrelated macro trends, (2) underserved demographic pivots, (3) workflow unbundling — take one step of an existing workflow and make it a standalone business. Avoid ideas that require a two-sided marketplace as a cold-start mechanism.\n\nIMPORTANT: The following ideas have already been generated — do NOT recreate or closely echo any of them:\n{{ JSON.stringify($('Load Idea Bank1').item.json.existingSummaries) }}\n\nAlso avoid duplicating any of these ideas just generated by Model A:\n{{ $('Generate Ideas — Model A1').item.json.output }}\n\nFor each idea return a JSON object with fields: oneLiner, targetCustomer, problem, revenueModel.\nContext: {{ JSON.stringify($('Load Idea Bank1').item.json.triggerContext) }}\nReturn a JSON array of 3 objects.",
         "options": {}
       },
-      "id": "22c1c5f2-d2b6-4cbd-aaf0-96b7b46fcf29",
+      "id": "643ef7ea-a49e-4a1e-9647-7a21a953804b",
       "name": "Generate Ideas — Model B1",
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        5168,
-        -1072
+        352,
+        -1632
       ]
     },
     {
@@ -593,16 +466,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "62b3df53-c199-459c-87eb-04477b16b3f2",
+      "id": "bb4abb27-db96-4872-b91c-ffbc951c80cc",
       "name": "ModelB — OpenRouter1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        5104,
-        -848
+        288,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -612,13 +486,13 @@
         "sessionIdType": "customKey",
         "sessionKey": "={{ $workflow.id }}-modelB"
       },
-      "id": "407e4341-b0a9-406a-b63e-d3a57f69ce28",
+      "id": "bba0f541-9dcf-4725-a285-3875e9800469",
       "name": "Memory — Model B1",
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        5232,
-        -848
+        416,
+        -1408
       ]
     },
     {
@@ -628,38 +502,38 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5568,
-        -1072
+        752,
+        -1632
       ],
-      "id": "51bcfa48-c0c7-42bb-b0c2-a9525047e5e8",
+      "id": "6f4f6075-56c9-4b26-a32e-14127782dc7d",
       "name": "Compile Outputs1"
     },
     {
       "parameters": {
-        "jsCode": "const rawA = items[0]?.json?.modelAOutput || '';\nconst rawB = items[0]?.json?.modelBOutput || '';\nconst bank = $('Load Idea Bank1').first().json || {};\nconst existingKeys = new Set(bank.existingKeys || []);\nconst existingSummaries = bank.existingSummaries || [];\nconst norm = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\\s+/g,' ').trim();\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nconst parseIdeas = (raw, label) => {\n  let p = tryParse(raw);\n  if (!p) {\n    const a = String(raw || '').indexOf('['); const b = String(raw || '').lastIndexOf(']');\n    if (a >= 0 && b > a) p = tryParse(String(raw).slice(a, b + 1));\n  }\n  if (!Array.isArray(p)) throw new Error('Idea parse failed: ' + label);\n  return p;\n};\nconst tok = (s) => new Set(norm(s).split(' ').filter(Boolean));\nconst jac = (a,b) => { if (!a.size || !b.size) return 0; let o = 0; for (const t of a) if (b.has(t)) o++; return o / (a.size + b.size - o); };\nconst ideas = [...parseIdeas(rawA,'A'), ...parseIdeas(rawB,'B')].filter(i => i && typeof i.oneLiner === 'string' && i.oneLiner.trim());\nconst existingTok = existingSummaries.map(tok);\nconst pickedTok = [];\nconst seen = new Set();\nconst out = [];\nlet semanticDrops = 0;\nfor (const idea of ideas) {\n  const key = norm(idea.oneLiner);\n  if (!key || seen.has(key) || existingKeys.has(key)) continue;\n  const t = tok(idea.oneLiner);\n  if (existingTok.some(x => jac(t,x) >= 0.8) || pickedTok.some(x => jac(t,x) >= 0.85)) { semanticDrops++; continue; }\n  seen.add(key); pickedTok.push(t); out.push({ ...idea, normalizedKey: key });\n}\nif (!out.length) throw new Error('No ideas survived hybrid dedup.');\nreturn [{ json: { ideas: out, parsedFromA: parseIdeas(rawA,'A').length, parsedFromB: parseIdeas(rawB,'B').length, dedupedCount: out.length, semanticDrops } }];"
+        "jsCode": "// ── Inputs ────────────────────────────────────────────────────────────────────\nconst rawA = items[0]?.json?.modelAOutput || '';\nconst rawB = items[0]?.json?.modelBOutput || '';\n\n// ── Existing keys from Google Sheet (passed through Load Idea Bank) ───────────\nconst existingKeys = new Set($('Load Idea Bank1').first().json.existingKeys || []);\n\n// ── Parse JSON arrays from raw LLM output ────────────────────────────────────\nfunction parseIdeas(raw) {\n  if (!raw) return [];\n  try {\n    const match = raw.match(/\\[[\\s\\S]*\\]/);\n    if (!match) return [];\n    return JSON.parse(match[0]);\n  } catch (e) {\n    return [];\n  }\n}\n\n// ── Normalize for dedup comparison ───────────────────────────────────────────\nfunction normalizeKey(str) {\n  if (!str) return '';\n  return str\n    .toLowerCase()\n    .replace(/[^a-z0-9 ]/g, '')\n    .replace(/\\s+/g, ' ')\n    .trim();\n}\n\n// ── Combine and validate ──────────────────────────────────────────────────────\nconst combined = [...parseIdeas(rawA), ...parseIdeas(rawB)];\n\nconst validIdeas = combined.filter(i =>\n  i && typeof i === 'object' && typeof i.oneLiner === 'string' && i.oneLiner.trim()\n);\n\n// ── Within-run dedup + cross-run dedup against Sheet keys ────────────────────\nconst seen = new Set();\nconst deduped = [];\n\nfor (const idea of validIdeas) {\n  const key = normalizeKey(idea.oneLiner);\n  if (!key) continue;\n  if (seen.has(key) || existingKeys.has(key)) continue;\n  seen.add(key);\n  deduped.push({ ...idea, normalizedKey: key });\n}\n\n// ── Output ────────────────────────────────────────────────────────────────────\nreturn [{\n  json: {\n    ideas: deduped,\n    parsedFromA: parseIdeas(rawA).length,\n    parsedFromB: parseIdeas(rawB).length,\n    dedupedCount: deduped.length,\n  }\n}];"
       },
-      "id": "520b0e4d-8995-4b97-b3c9-a3497caeff14",
+      "id": "50034c9e-24c2-40a1-85e2-903b5bd32c64",
       "name": "Dedupe & Normalize Ideas1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        5792,
-        -1072
+        976,
+        -1632
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are Team A research analyst. Use web tools to evaluate each idea.\nInference is allowed but must lower confidence.\nTeam strategy: {{ $('Load Idea Bank1').item.json.teamStrategy }}\nAssigned personas: {{ JSON.stringify($('Load Idea Bank1').item.json.assignedPersonas) }}\nSignal theses: {{ JSON.stringify($('Parse Signal Theses1').item.json.signalTheses) }}\nReturn ONLY JSON array. Each idea must include research plus:\nnoveltyScore, confidenceScore, evidenceCoverage, horizonBucket, researchSummary.\nIdeas: {{ JSON.stringify($('Dedupe & Normalize Ideas1').first().json.ideas) }}",
+        "text": "=You are a startup market researcher. For each of the following business ideas, research and score them across 6 dimensions. Return ONLY a JSON array where each object contains all original idea fields PLUS a `research` object with these fields:\n\n- originality: { score: 0-10, existingBrands: [array of known competitors], notes: string }\n- marketSize: { score: 0-10, tamEstimate: string, problemPervasiveness: string, notes: string }\n- competitionDensity: { score: 0-10, numberOfKnownPlayers: string, marketLeaders: [array], successLevel: string, notes: string }\n- timing: { score: 0-10, trendDirection: 'rising|peak|declining', whyNow: string, recentUnlocks: string, notes: string }\n- pricingPower: { score: 0-10, comparableProductsPricing: string, willingnessToPay: string, notes: string }\n- distributionClarity: { score: 0-10, obviousFirstChannel: string, channelExists: boolean, notes: string }\n- regulatoryExposure: { riskLevel: 'low|medium|high', domains: [array of any regulated domains touched], feasibilityImpact: string }\n- talentAvailability: { score: 0-10, requiredSkills: [array], bottlenecks: string }\n- exitLandscape: { score: 0-10, likelyAcquirers: [array], recentAcquisitionsInSpace: string }\n\nAlso add a `researchSummary` string: 2 sentences on why this idea is or isn't well-positioned.\n\nIdeas to research:\n{{ JSON.stringify($('Dedupe & Normalize Ideas1').first().json.ideas) }}",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 3.1,
       "position": [
-        6528,
-        -1072
+        1648,
+        -1632
       ],
-      "id": "2c44918e-6105-4d9f-bf2d-19d080227591",
+      "id": "1268a7e4-c1d4-4758-ae37-0079585fee3f",
       "name": "Research Agent1"
     },
     {
@@ -667,16 +541,17 @@
         "model": "qwen/qwen3-vl-30b-a3b-thinking",
         "options": {}
       },
-      "id": "fe9a6fa4-32f5-44f3-9dc2-9bae669470ba",
+      "id": "7aabdb6a-be8c-48a4-9217-ab58f88a680a",
       "name": "Research — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        6464,
-        -848
+        1664,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -690,37 +565,37 @@
       "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
       "typeVersion": 1.3,
       "position": [
-        6592,
-        -848
+        1792,
+        -1408
       ],
-      "id": "9bbad965-5bbd-400b-9bdc-ba0b89ac1e52",
+      "id": "f8ff417a-6095-4f26-a6b7-874d4861c959",
       "name": "Simple Memory"
     },
     {
       "parameters": {
-        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet p = tryParse(raw);\nlet repaired = false;\nif (!p) {\n  const a = String(raw).indexOf('['); const b = String(raw).lastIndexOf(']');\n  if (a >= 0 && b > a) { p = tryParse(String(raw).slice(a, b + 1)); repaired = !!p; }\n}\nif (!Array.isArray(p)) throw new Error('Research output is not valid JSON array.');\nconst out = p.filter(i => i && typeof i.oneLiner === 'string').map(i => ({\n  ...i,\n  noveltyScore: Number.isFinite(Number(i.noveltyScore)) ? Number(i.noveltyScore) : 0,\n  confidenceScore: Number.isFinite(Number(i.confidenceScore)) ? Number(i.confidenceScore) : 0,\n  evidenceCoverage: Number.isFinite(Number(i.evidenceCoverage)) ? Number(i.evidenceCoverage) : 0,\n  horizonBucket: i.horizonBucket || 'barbell'\n}));\nif (!out.length) throw new Error('No valid researched ideas after parse.');\nreturn [{ json: { researchedIdeas: out, parseRepairUsed: repaired } }];"
+        "jsCode": "const raw = $input.first().json.output || '';\n\nconst jsonStart = raw.indexOf('[');\nconst jsonEnd = raw.lastIndexOf(']');\n\nif (jsonStart === -1 || jsonEnd === -1) {\n  return [{ json: { researchedIdeas: [], parseError: 'No JSON array found in output' } }];\n}\n\nconst cleaned = raw\n  .slice(jsonStart, jsonEnd + 1)\n  .replace(/,(\\s*[}\\]])/g, '$1');\n\ntry {\n  const researchedIdeas = JSON.parse(cleaned);\n  return [{ json: { researchedIdeas } }];\n} catch(e) {\n  return [{ json: { researchedIdeas: [], parseError: e.message, rawSlice: cleaned.slice(0, 500) } }];\n}"
       },
-      "id": "f56bb653-27ca-415e-b6c9-62dcea7ce47f",
+      "id": "4f0b585d-6ff9-4e7b-8000-1b8920f0054b",
       "name": "Parse Research Results1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        6928,
-        -1072
+        2000,
+        -1632
       ]
     },
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are Team A invention committee. Pick one winner with asymmetric upside.\nWeighting: breakthrough leverage 30, novelty defensibility 25, market urgency 15, feasibility 15, distribution 15.\nUse evidence from research and signal theses.\nTeam strategy: {{ $('Load Idea Bank1').item.json.teamStrategy }}\nPersona cards: {{ JSON.stringify($('Load Idea Bank1').item.json.assignedPersonas) }}\nSignal theses: {{ JSON.stringify($('Parse Signal Theses1').item.json.signalTheses) }}\nReturn ONLY JSON object fields:\nwinner, whyBest, personaRationale, decisionRiskFlags, noveltyScore, confidenceScore, evidenceCoverage, horizonBucket, rankedList\nResearched Ideas: {{ JSON.stringify($json.researchedIdeas) }}"
+        "text": "=You are a competitive startup evaluator. Your goal is to identify the single idea most likely to WIN against a competing team — prioritize ideas that are novel, have real market pull, and can be built in 6 months with a $25,000 budget.\n\nScore each idea using these EXACT weights (must sum to 100):\n- Market urgency & size: 25 points\n- Originality / no dominant incumbent: 20 points\n- Feasibility within $25k / 6 months: 20 points\n- Differentiation / moat: 20 points\n- Distribution clarity (obvious first channel exists): 15 points\n\nFor each idea you have been provided research data covering: originality, market size, competition density, timing, pricing power, distribution clarity, regulatory exposure, talent availability, and exit landscape. Use this evidence — do NOT invent your own beliefs.\n\nReturn a JSON object with:\n- winner: the full idea object of the top pick\n- whyBest: string explaining why this idea wins based on the research\n- rankedList: array of all ideas ranked with fields { oneLiner, totalScore, scoreBreakdown: { marketUrgency, originality, feasibility, differentiation, distribution } }\n\nResearched Ideas:\n{{ JSON.stringify($json.researchedIdeas) }}"
       },
-      "id": "8c8454fd-d039-4b4e-994b-a33de652ce51",
+      "id": "c8912efb-270c-418e-b8c4-d00d48205674",
       "name": "Rank & Pick Top Idea1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        7152,
-        -1072
+        2224,
+        -1632
       ]
     },
     {
@@ -728,16 +603,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "ef141a75-a9c8-42a3-b8d7-b4b9e46a2dac",
+      "id": "8108c3ed-b46f-4675-9f02-316183a625b1",
       "name": "PickTop — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        7232,
-        -848
+        2304,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -745,15 +621,15 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Expand this selected winner idea into startup concept JSON fields: name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks.\nWinning idea: {{ JSON.stringify($json.winnerIdea || {}) }}"
+        "text": "=You are a startup strategist. Expand this idea into a full structured business concept.\n\nReturn ONLY a JSON object with these fields:\n- name\n- oneLiner\n- targetCustomer\n- problem\n- solution\n- revenueModel\n- goToMarket\n- unfairAdvantage\n- keyRisks\n\nNo markdown. No explanation. Just the JSON object.\n\nIdea:\n{{ $json.output || $json.text }}"
       },
-      "id": "e2d0c548-e252-445b-b74c-4564dd29deec",
+      "id": "907977df-1a4a-4efc-a00b-d31a0fa4fad5",
       "name": "Build Concept Packet1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        7504,
-        -1072
+        2576,
+        -1632
       ]
     },
     {
@@ -761,16 +637,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "754525d3-7b88-4cdc-b7c2-69efa219247b",
+      "id": "8ccf315e-c720-498e-94e2-e46fddec3a49",
       "name": "DraftConcept — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        7584,
-        -848
+        2656,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -780,13 +657,13 @@
         "promptType": "define",
         "text": "=You are a brutal startup critic. Analyze this business concept and identify its fatal flaws.\n\nReturn ONLY a JSON object with these fields:\n- fatalAssumptions (array of strings)\n- weaknesses (array of strings)\n- suggestedFixes (array of strings)\n- weakestRubricAreas (array of strings — choose from: originality, market, differentiation, goToMarket, revenueModel, feasibility)\n\nNo markdown. No explanation. Just the JSON object.\n\nConcept:\n{{ $json.output || $json.text }}"
       },
-      "id": "4f535349-027f-45f4-94c1-2bb305685f7f",
+      "id": "a7850b47-ad85-4410-b3a8-0758ad0f1d9a",
       "name": "Self Critic1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        7856,
-        -1072
+        2928,
+        -1632
       ]
     },
     {
@@ -794,16 +671,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "c21c9934-8efc-49ca-b33f-672ea7c83d1e",
+      "id": "fa28b3cd-2e8b-4b5e-90f2-78fb816a10e5",
       "name": "SelfCritic — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        7936,
-        -848
+        3008,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -813,13 +691,13 @@
         "promptType": "define",
         "text": "=You are a startup strategist. Using the critique below, repair and strengthen this business concept. Address every fatal assumption and weakness listed. If a fatal assumption cannot be resolved with a minor fix, pivot the core idea rather than papering over it — substantive repairs only.\n\nReturn ONLY the full updated concept as a JSON object with these fields:\n- name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks\n\nNo markdown. No explanation. Just the JSON object.\n\nCritique:\n{{ $json.output || $json.text }}\n\nOriginal Concept (from prior step — incorporate all suggested fixes):\n{{ $('Build Concept Packet1').item.json.output || $('Build Concept Packet1').item.json.text }}"
       },
-      "id": "4710c11e-249f-4251-96ef-0ada795c60b8",
+      "id": "906566f8-873f-4cf2-b60b-58ca0a2168b1",
       "name": "Repair Concept1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        8208,
-        -1072
+        3280,
+        -1632
       ]
     },
     {
@@ -827,31 +705,32 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "db0646fa-6132-41fe-9ba7-efae1184cc90",
+      "id": "069391c1-83fe-4c11-a7be-34b4ebbc96e4",
       "name": "RepairConcept — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        8288,
-        -848
+        3360,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const opts = ['ICP','pricing','channel','scope','keyFeature'];\nconst src = $input.first().json || {};\nconst conceptText = src.output || src.text || '';\nconst seed = String($('Load Idea Bank1').first().json.runSeed || $execution.id);\nlet h = 2166136261;\nconst s = seed + '|' + conceptText;\nfor (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }\nconst mutation = opts[(h >>> 0) % opts.length];\nreturn [{ json: { mutation, conceptText, mutationSeed: seed } }];"
+        "jsCode": "const opts = ['ICP', 'pricing', 'channel', 'scope', 'keyFeature'];\nconst mutation = opts[Math.floor(Math.random() * opts.length)];\nconst conceptText = $input.first().json.text;\nreturn [{ json: { mutation, conceptText } }];"
       },
-      "id": "fe736faa-b992-4f58-ad41-4ac57991c52c",
+      "id": "ed41698f-4682-4294-9029-a9cf43215c39",
       "name": "Draw Mutation1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        8560,
-        -1072
+        3632,
+        -1632
       ]
     },
     {
@@ -859,13 +738,13 @@
         "promptType": "define",
         "text": "=You are a creative startup strategist. Apply a '{{ $json.mutation }}' mutation to this business concept — meaningfully change that dimension to explore a stronger variant.\n\nBefore applying, assess whether this mutation improves the concept's competitive position or feasibility within a $25k budget and 6-month timeline. If this mutation would weaken the concept, apply it conservatively and explain the tradeoff in a `mutationNote` field.\n\nReturn ONLY the full updated concept as a JSON object with fields: name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks, mutationNote.\n\nCurrent Concept:\n{{ $json.conceptText }}"
       },
-      "id": "b8020b61-1317-458e-b803-1f249c28f6f8",
+      "id": "4882a456-a348-4ec9-b278-220941d8669e",
       "name": "Apply Mutation1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        8784,
-        -1072
+        3856,
+        -1632
       ]
     },
     {
@@ -873,16 +752,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "99dd53a2-ce18-45d8-b4b6-ac2953dd0bf0",
+      "id": "c100313c-90d4-417d-9832-b79dd554a62b",
       "name": "ApplyMutation — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        8864,
-        -848
+        3936,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -892,13 +772,13 @@
         "promptType": "define",
         "text": "=You are a skeptical VC partner evaluating a bootstrapped startup with a $25,000 budget and 6-month runway. Ruthlessly evaluate this concept by answering these 10 deal-killer questions with in-depth reasoning that is calibrated to this budget and timeline — not Series A scale:\n\n1. Why will this fail?\n2. Who already does this better?\n3. Why would customers not pay?\n4. What is the CAC and is it sustainable at $25k total spend?\n5. What is the moat?\n6. Why this team (and can it be executed solo or with contractors)?\n7. What kills this in year 2?\n8. What is the regulatory risk?\n9. What does the unit economics look like at MVP scale (first 100 customers)?\n10. What is the exit path and who are realistic acquirers?\n\nReturn ONLY a JSON array of 10 objects each with fields: question, answer.\n\nConcept:\n{{ $json.output || $json.text }}"
       },
-      "id": "5c4a8e1d-f291-42ea-86b7-249cc7af6acd",
+      "id": "d368ee19-4f9f-4602-b115-13c7cf85761d",
       "name": "VC Assassin1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        9136,
-        -1072
+        4208,
+        -1632
       ]
     },
     {
@@ -906,31 +786,32 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "69236257-9825-4ef2-b6ac-4abffad07159",
+      "id": "18b535d1-e30c-486b-b868-42510ea78f1d",
       "name": "VCAssassin — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        9216,
-        -848
+        4288,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const vc = $input.first().json || {};\nconst vcQA = vc.output || vc.text || '';\nconst mut = $('Apply Mutation1').first().json || {};\nconst mutatedConcept = mut.output || mut.text || '';\nreturn [{ json: { vcQA, mutatedConcept } }];"
+        "jsCode": "const vcQA = $input.first().json.text;\nconst mutatedConcept = $('Apply Mutation1').first().json.text;\nreturn [{ json: { vcQA, mutatedConcept } }];"
       },
-      "id": "5a8efe54-a220-478f-ac56-a487b24adf5b",
+      "id": "3e92f3d8-4411-4f01-9542-1569997e1f26",
       "name": "Merge VC + Concept1",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        9488,
-        -1072
+        4560,
+        -1632
       ]
     },
     {
@@ -938,13 +819,13 @@
         "promptType": "define",
         "text": "=You are a startup strategist. A VC has just performed a brutal assassination of this business concept. Your job is to respond to every one of their 10 criticisms and produce an improved, hardened version of the concept that directly addresses each deal-killer.\n\nFor each VC question:\n- If the concern is resolvable, explain how the concept addresses it and update the concept accordingly\n- If the concern reveals a structural flaw, pivot that element of the concept rather than papering over it\n\nReturn ONLY a JSON object with fields:\n- concept: { name, oneLiner, targetCustomer, problem, solution, revenueModel, goToMarket, unfairAdvantage, keyRisks }\n- vcResponses: array of { question, originalConcern, response, conceptChange } for each of the 10 VC questions\n\nNo markdown. No explanation. Just the JSON object.\n\nOriginal Concept:\n{{ $json.mutatedConcept }}\n\nVC Assassination Q&A:\n{{ $json.vcQA }}"
       },
-      "id": "38d62b49-a3c0-488f-9da5-e48f16593ded",
+      "id": "d4d348f1-cfc0-4de7-9bef-677db851c834",
       "name": "Respond to VC Assassination1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        9712,
-        -1072
+        4784,
+        -1632
       ]
     },
     {
@@ -952,16 +833,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "a26d8a9d-b01e-4ca4-8848-8bba66d75a39",
+      "id": "3f918927-699a-4bb7-81eb-837115be4cb6",
       "name": "VCRespond — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        9792,
-        -848
+        4864,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -969,15 +851,15 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=Compile the final team packet in neutral, principle-grounded style.\nReturn ONLY JSON with fields:\nconcept, vcQA, vcResponses, overallStrength, rubricScores, summary,\nteamStrategy, personaSet, personaRationale, signalTheses,\nnoveltyScore, confidenceScore, horizonBucket, evidenceCoverage, decisionRiskFlags.\nteamStrategy={{ $('Load Idea Bank1').item.json.teamStrategy }}\npersonaSet={{ JSON.stringify(($('Load Idea Bank1').item.json.assignedPersonas || []).map(p => p.id)) }}\npersonaRationale={{ $('Parse Ranked Winner1').item.json.rankingMeta.personaRationale }}\nsignalTheses={{ JSON.stringify($('Parse Signal Theses1').item.json.signalTheses) }}\nrankingMeta={{ JSON.stringify($('Parse Ranked Winner1').item.json.rankingMeta) }}\noriginalVCQA={{ $('Merge VC + Concept1').item.json.vcQA }}\nNeutralized hardened concept:\n{{ $json.output || $json.text }}"
+        "text": "=You are a meticulous analyst. Compile the final arena submission packet from the hardened concept and its full VC response history.\n\nScore rubric — use EXACTLY these weights, they must sum to 100:\n- market (0-25): Is the market large, urgent, and willing to pay?\n- originality (0-20): Is this idea novel with no dominant incumbent?\n- feasibility (0-20): Can this realistically be built in 6 months on $25k?\n- differentiation (0-20): Does it have a clear unfair advantage or moat?\n- distribution (0-15): Is there a clear, realistic first channel and distribution path?\n\nReturn ONLY a JSON object with fields:\n- concept (the full hardened concept object from the VC response)\n- vcQA (array of {question, answer} from the original VC assassination)\n- vcResponses (array of {question, originalConcern, response, conceptChange})\n- overallStrength (integer 0-100, sum of rubric scores)\n- rubricScores: { market, originality, feasibility, differentiation, distribution }\n- summary (2-sentence pitch suitable for arena submission)\n\nNo markdown. No explanation. Just the JSON object.\n\nHardened Concept + VC Responses:\n{{ $json.output || $json.text }}"
       },
-      "id": "8df6f4a8-a3ff-4986-ab2e-2fbe1efac15a",
+      "id": "aca3771a-d4f3-492f-806b-e3791cc8671f",
       "name": "Finalize Packet1",
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.6,
       "position": [
-        10064,
-        -1072
+        5136,
+        -1632
       ]
     },
     {
@@ -985,16 +867,17 @@
         "model": "qwen/qwen3-235b-a22b-thinking-2507",
         "options": {}
       },
-      "id": "38376904-74c5-4966-86bc-bb6619f315dd",
+      "id": "ea184c70-c085-4dd1-83aa-a6afb18cf653",
       "name": "Finalize — OpenRouter Model1",
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
       "typeVersion": 1,
       "position": [
-        10144,
-        -848
+        5216,
+        -1408
       ],
       "credentials": {
         "openRouterApi": {
+          "id": "ShiEUo80gLBVCnMw",
           "name": "OpenRouter account"
         }
       }
@@ -1011,16 +894,17 @@
           "goggles": []
         }
       },
-      "id": "d2ee03c8-5000-4411-a681-e7944fe2b602",
+      "id": "ad4b266a-357d-44a8-a653-98289afe2b09",
       "name": "Web Search - Model B1",
       "type": "@brave/n8n-nodes-brave-search.braveSearchTool",
       "typeVersion": 1,
       "position": [
-        5360,
-        -848
+        544,
+        -1408
       ],
       "credentials": {
         "braveSearchApi": {
+          "id": "GovdHNl4WyQt3JAE",
           "name": "Brave Search account"
         }
       }
@@ -1037,136 +921,35 @@
           "goggles": []
         }
       },
-      "id": "bea0d833-cf46-4595-bc82-251b772fab91",
+      "id": "3dc0519b-6f74-4208-84d1-d3ef431210ee",
       "name": "Web Search — Model A1",
       "type": "@brave/n8n-nodes-brave-search.braveSearchTool",
       "typeVersion": 1,
       "position": [
-        4896,
-        -848
+        80,
+        -1408
       ],
       "credentials": {
         "braveSearchApi": {
+          "id": "GovdHNl4WyQt3JAE",
           "name": "Brave Search account"
         }
       }
     },
     {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Scout emerging opportunity signals from science breakthroughs, trend shifts, and competitive gaps.\nUse tools and return ONLY JSON array of 6 objects with fields:\nid, signalType, horizonBucket, claim, opportunityHint, sourceUrl, signalDate, evidenceConfidence.\nTeam strategy: {{ $json.teamStrategy }}\nAssigned personas: {{ JSON.stringify($json.assignedPersonas) }}\nContext: {{ JSON.stringify($json.triggerContext) }}",
-        "options": {}
-      },
-      "id": "a8d9c043-f84e-4aab-9b70-5a616d5b90c1",
-      "name": "Signal Scout1",
-      "type": "@n8n/n8n-nodes-langchain.agent",
-      "typeVersion": 3.1,
-      "position": [
-        4560,
-        -1296
-      ]
-    },
-    {
-      "parameters": {
-        "model": "qwen/qwen3-235b-a22b-thinking-2507",
-        "options": {}
-      },
-      "id": "af53f5d1-7be2-4542-bfd9-0e2c6be1b8d4",
-      "name": "SignalScout - OpenRouter Model1",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "parameters": {},
+      "id": "bd9d9c93-7f95-4a07-9758-bc64e4f9efad",
+      "name": "Team Runner Trigger",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
       "typeVersion": 1,
       "position": [
-        4496,
-        -1088
-      ],
-      "credentials": {
-        "openRouterApi": {
-          "name": "OpenRouter account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet p = tryParse(raw);\nif (!p) {\n  const a = String(raw).indexOf('['); const b = String(raw).lastIndexOf(']');\n  if (a >= 0 && b > a) p = tryParse(String(raw).slice(a, b + 1));\n}\nif (!Array.isArray(p)) throw new Error('Signal scout parse failed.');\nconst theses = p.filter(s => s && typeof s === 'object').map((s,i) => ({\n  id: s.id || ('signal_' + (i + 1)),\n  signalType: s.signalType || 'trend',\n  horizonBucket: s.horizonBucket || 'barbell',\n  claim: s.claim || '',\n  opportunityHint: s.opportunityHint || '',\n  sourceUrl: s.sourceUrl || '',\n  signalDate: s.signalDate || '',\n  evidenceConfidence: Number.isFinite(Number(s.evidenceConfidence)) ? Number(s.evidenceConfidence) : 50\n})).filter(s => s.claim && s.opportunityHint);\nif (!theses.length) throw new Error('No usable signal theses.');\nconst base = $('Load Idea Bank1').first().json || {};\nreturn [{ json: { ...base, signalTheses: theses } }];"
-      },
-      "id": "ab6d7df1-6f7b-4789-9b45-3ec9d6e078ab",
-      "name": "Parse Signal Theses1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        4784,
-        -1296
+        -848,
+        -1632
       ]
-    },
-    {
-      "parameters": {
-        "jsCode": "const raw = $input.first().json.output || $input.first().json.text || '';\nconst tryParse = (v) => { try { return JSON.parse(v); } catch { return null; } };\nlet p = tryParse(raw);\nif (!p) {\n  const a = String(raw).indexOf('{'); const b = String(raw).lastIndexOf('}');\n  if (a >= 0 && b > a) p = tryParse(String(raw).slice(a, b + 1));\n}\nif (!p || typeof p !== 'object' || !p.winner || typeof p.winner !== 'object') throw new Error('Rank winner parse failed.');\nconst num = (v) => Number.isFinite(Number(v)) ? Number(v) : 0;\nreturn [{ json: {\n  winnerIdea: p.winner,\n  rankingMeta: {\n    whyBest: p.whyBest || '',\n    personaRationale: p.personaRationale || '',\n    decisionRiskFlags: Array.isArray(p.decisionRiskFlags) ? p.decisionRiskFlags : [],\n    noveltyScore: num(p.noveltyScore),\n    confidenceScore: num(p.confidenceScore),\n    evidenceCoverage: num(p.evidenceCoverage),\n    horizonBucket: p.horizonBucket || 'barbell',\n    rankedList: Array.isArray(p.rankedList) ? p.rankedList : []\n  }\n}}];"
-      },
-      "id": "aa3e24ab-8f59-4f9c-8b8d-68dcabf8cf4a",
-      "name": "Parse Ranked Winner1",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        7360,
-        -1072
-      ]
-    },
-    {
-      "parameters": {
-        "promptType": "define",
-        "text": "=Remove persona-style language and keep principle-grounded content only.\nReturn ONLY JSON with fields: concept, vcResponses, voiceAudit.\nInput: {{ $json.output || $json.text }}"
-      },
-      "id": "ad64e05b-27c2-4f37-a42f-6d0e9d5c2f6f",
-      "name": "Neutralize Persona Voice1",
-      "type": "@n8n/n8n-nodes-langchain.chainLlm",
-      "typeVersion": 1.6,
-      "position": [
-        9968,
-        -1072
-      ]
-    },
-    {
-      "parameters": {
-        "model": "qwen/qwen3-235b-a22b-thinking-2507",
-        "options": {}
-      },
-      "id": "a2ae2ba0-6f39-46bf-b6a1-bf71062ef942",
-      "name": "NeutralizePersona - OpenRouter Model1",
-      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
-      "typeVersion": 1,
-      "position": [
-        10048,
-        -848
-      ],
-      "credentials": {
-        "openRouterApi": {
-          "name": "OpenRouter account"
-        }
-      }
     }
   ],
-  "pinData": {
-    "Team Runner Trigger": [
-      {
-        "json": {},
-        "pairedItem": {
-          "item": 0
-        }
-      }
-    ]
-  },
+  "pinData": {},
   "connections": {
-    "Team Runner Trigger": {
-      "main": [
-        [
-          {
-            "node": "Read Idea Bank Sheet",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Read Idea Bank Sheet": {
       "main": [
         [
@@ -1215,7 +998,7 @@
       "main": [
         [
           {
-            "node": "Signal Scout1",
+            "node": "Generate Ideas — Model A1",
             "type": "main",
             "index": 0
           }
@@ -1358,7 +1141,7 @@
       "main": [
         [
           {
-            "node": "Parse Ranked Winner1",
+            "node": "Build Concept Packet1",
             "type": "main",
             "index": 0
           }
@@ -1512,7 +1295,7 @@
       "main": [
         [
           {
-            "node": "Neutralize Persona Voice1",
+            "node": "Finalize Packet1",
             "type": "main",
             "index": 0
           }
@@ -1556,12 +1339,7 @@
       "ai_tool": [
         [
           {
-            "node": "Signal Scout1",
-            "type": "ai_tool",
-            "index": 0
-          },
-          {
-            "node": "Research Agent1",
+            "node": "Generate Ideas — Model B1",
             "type": "ai_tool",
             "index": 0
           }
@@ -1572,79 +1350,19 @@
       "ai_tool": [
         [
           {
-            "node": "Signal Scout1",
-            "type": "ai_tool",
-            "index": 0
-          },
-          {
-            "node": "Research Agent1",
-            "type": "ai_tool",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Signal Scout1": {
-      "main": [
-        [
-          {
-            "node": "Parse Signal Theses1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Parse Signal Theses1": {
-      "main": [
-        [
-          {
             "node": "Generate Ideas — Model A1",
-            "type": "main",
+            "type": "ai_tool",
             "index": 0
           }
         ]
       ]
     },
-    "Parse Ranked Winner1": {
+    "Team Runner Trigger": {
       "main": [
         [
           {
-            "node": "Build Concept Packet1",
+            "node": "Read Idea Bank Sheet",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Neutralize Persona Voice1": {
-      "main": [
-        [
-          {
-            "node": "Finalize Packet1",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "SignalScout - OpenRouter Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Signal Scout1",
-            "type": "ai_languageModel",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "NeutralizePersona - OpenRouter Model1": {
-      "ai_languageModel": [
-        [
-          {
-            "node": "Neutralize Persona Voice1",
-            "type": "ai_languageModel",
             "index": 0
           }
         ]
@@ -1657,7 +1375,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "1e440b9c-b270-4d19-92b4-796d156ac422",
+  "versionId": "1255f4e2-e8b5-4c01-8f67-27e37167eca1",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "d1ad3f4f440ce23f8275e30c2127c8c2fe97bf83a4534f480ec0c7a54495b806"
